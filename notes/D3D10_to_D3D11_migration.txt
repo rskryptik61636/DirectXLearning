@@ -1,0 +1,85 @@
+D3D10 to D3D11 migration
+
+Prerequisites
+	- Worth backing up the project to source control before continuing
+	- Need to see if git supports multiple branches
+	- Seems to move proper from D3D10 to D3D11, D3DX probably needs to be done away with as well
+	- Worth waiting for VS2012 and Windows 8.1 before proceeding with migration
+
+Affected Components
+- Device and rendering contexts
+	- All rendering context related interfaces now need to go through ID3D11Device::GetImmediateContext()
+		- D3D11CreateDeviceAndSwapChain also returns an ID3D11DeviceContext as an output param
+		- This is probably what needs to be used for rendering related ops
+		- The scene objects will have to store an ID3D11DeviceContext object as member variables instead
+		- On second thought, its probably quicker to just use the GetImmediateContext method as suggested to avoid further breakage
+		- Affected function calls
+			- RSSetState
+			- OMSetBlendState
+			- ClearState
+			- OMSetDepthStencilState
+			- IASetInputLayout
+			- IASetPrimitiveTopology
+			- OMSetRenderTargets
+			- RSSetViewports
+			- ClearRenderTargetView (takes in a FLOAT[4] as the clear color, this just gets better and better)
+			- ClearDepthStencilView
+			- IASetVertexBuffers
+			- IASetIndexBuffer
+			- DrawIndexed
+	- ID3D10Device = ID3D11Device
+		- ID3D11Device2 is the latest version (Direct3D 11.2), try it out once the dust settles
+	- ID3D10Texture2D = ID3D11Texture2D
+	- ID3D10RenderTargetView = ID3D11RenderTargetView
+	- ID3D10DepthStencilView = ID3D11DepthStencilView
+	- ID3DX10Font = Sprite(Batch/Font) [see D3DX_to_DXTX_migration.txt]
+	- D3D10_DRIVER_TYPE = D3D_DRIVER_TYPE
+		- In the D3DApp ctor, D3D10_DRIVER_TYPE_HARDWARE = D3D_DRIVER_TYPE_HARDWARE
+	- ID3D10*State = ID3D11*State
+		- The affected interfaces include (* in 'ID3D(10/11)*State')
+			- Rasterizer
+			- Blend
+			- DepthStencil
+			- ShaderResourceView	
+	- ID3D10InputLayout = ID3D11InputLayout
+	- ID3D10Buffer = ID3D11Buffer
+	- D3D10_INPUT_ELEMENT_DESC = D3D11_INPUT_ELEMENT_DESC
+		- D3D11_INPUT_CLASSIFICATION is the same as D3D10_INPUT_CLASSIFICATION
+			- D3D10_INPUT_PER_VERTEX_DATA = D3D11_INPUT_PER_VERTEX_DATA
+	- D3D10_BUFFER_DESC = D3D11_BUFFER_DESC
+		- New member StructureByteStride needs to be set to sizeof(<Vertex_type>) most probably
+			- Seems to be required iff a ComputeShader is being used, can forget about it for our purposes
+		- D3D10_USAGE_IMMUTABLE = D3D11_USAGE_IMMUTABLE
+		- D3D10_BIND_VERTEX_BUFFER = D3D11_BIND_VERTEX_BUFFER
+		- D3D10_BIND_INDEX_BUFFER = D3D11_BIND_INDEX_BUFFER
+		- D3D10_CPU_ACCESS_WRITE = D3D11_CPU_ACCESS_WRITE
+	- D3D10_SUBRESOURCE_DATA = D3D11_SUBRESOURCE_DATA
+	- D3D10_PRIMITIVE_TOPOLOGY_TRIANGLELIST = D3D_PRIMITIVE_TOPOLOGY_TRIANGLELIST (thank god there is an API version agnostic variant!)
+	- D3D10_TEXTURE2D_DESC = D3D11_TEXTURE2D_DESC
+		- D3D10_USAGE = D3D11_USAGE
+		- D3D10_BIND_DEPTH_STENCIL = D3D11_BIND_DEPTH_STENCIL
+	- D3D10_VIEWPORT = D3D11_VIEWPORT
+	- D3D10CreateDeviceAndSwapChain = D3D11CreateDeviceAndSwapChain
+		- The interface has changed so its not going to be a straight port (wonderful!)
+		- The additional input params are:
+			- pFeatureLevels = array of D3D_FEATURE_LEVELs; can default to NULL for now
+			- FeatureLevels = no. of elements in pFeatureLevels
+		- The additional output params are:
+			- pFeatureLevel = pointer to the current D3D_FEATURE_LEVEL
+			- ppImmediateContext = pointer to an ID3D11DeviceContext which represents the device context
+		- D3D10_SDK_VERSION = D3D11_SDK_VERSION
+	- D3D10_RASTERIZER_DESC = D3D11_RASTERIZER_DESC
+		- D3D10_(FILL/CULL)_MODE = D3D11_(FILL/CULL)_MODE
+	- D3D10_BLEND_DESC = D3D11_BLEND_DESC
+		- D3D10_BLEND_* = D3D11_BLEND_*	
+
+Linkage differences
+	- Might need to link against d3d11(d).lib in addition to or instead of d3d10(d).lib (TODO: verify this)
+	- Might need to include d3d11.h in addition to d3d10.h which needs to be retained for those
+		- DirectXTK includes d3d11_1.h, can probably include d3d11_2.h since it includes d3d11_1.h internally
+		
+Important note
+	- D3D11 has the capability to compile vertex and pixel shaders and access them using ID3D11VertexShader and ID3D11PixelShader interfaces (the same for all the other shader types)
+	- Futhermore, they can be bound to the pipeline directly using ID3D11Device::(V/P)SSetShader
+	- This is probably what we might need to do shader reflection and things like that
+	- Can probably stick to the traditional technique and effect approach for now until we get into that sort of stuff

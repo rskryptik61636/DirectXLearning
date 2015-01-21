@@ -1,0 +1,899 @@
+Deferred shading experiments
+
+Overview
+	- To implement deferred shading and test it on the Sponze model, and also to try out multiple lights.
+	
+Implementation
+	- Create a GBuffer class which contains the following textures and associated views:
+		- Position
+		- Normal (world space)
+		- Depth
+		- Diffuse
+		- Specular
+		
+	- Consider using the Texture2D class which was part of Intel's deferred shading demo.
+		- All the calls to the COM interfaces need to be updated to work with the CComPtr instances.
+		
+		- Should probably leave the return types of the resource view accessor functions as is because we can avoid the overhead of returning a CComPtr
+		  which really isn't necessary.
+		  
+	- Good opportunity to implement the single shader param struct and internal toggle states
+		- Having a single shader param struct would scale well as params can be added at will and the implementation can be changed accordingly
+		  without the interface having to change.
+		  
+		- Instead of deciding which shader params to set externally, it would be better to handle it internally in the effect class
+		  based on the toggle states.
+		  
+		- Also look at the StructuredBuffer class used in the Intel demo as that is something that looks promising.
+			- Looks like it encapsulates a D3D11 Structured Buffer, should read up on it.
+			
+			- It seems that the Structured Buffer is definitely the way to go for the Lights array, should steal it from the Intel demo.
+			
+			- Look at its usage in the demo for ideas, infact analyze the demo thoroughly to get a better overall idea of how to proceed.
+			
+	- Intel demo analysis
+		- Lights structured buffer
+			- Instead of just stealing the StructuredBuffer class, it makes more sense to create a ShaderStructuredBuffer struct
+			  like the others we have in DXEffect.h as it would allow for easier integration into DXEffect.
+			  
+			- createStructuredBuffer could be another helper function along the lines of createConstantBuffer.
+			
+			- Need to look into how reflection reports structured buffers. => Apparently, the same way as with constant buffers.
+			
+		- Effects param setting
+			- In the demo, the effect params are only set once and then the mesh's render method is called.
+			  Need to look at the impl of CDXUTMesh::Render() to see if that does anything else.
+			  
+			- Doesn't seem to be doing things very differently from how we currently do it, can leave as is.
+			
+	- DefferedShadingEffect implementation
+		- set* functions can be made empty as we will handle everything inside the apply() method. => done
+		
+		- Shader params struct with all the parameters we need. => done
+		
+		- apply() will set all the shaders and their corresponding params based on the passed in params and the toggle states. => done
+		
+		- Display the GBuffer textures using DebugTextureEffect to see if they've been generated properly. => done
+			- Might not have been such a great idea to put the GBuffer instance inside the DeferredShadingEffects class
+			  as we need to write pass-through functions to get at anything and there is no real need for it.
+			  
+			- Seems we can't use the texture formats for the GBuffer textures that we initially thought of,
+			  go with the ones that were used in the Intel demo app.
+			  
+			- Nothing (crap!), implement the DebugTextureEffect's cleanup() method to be sure we're not leaving anything behind.
+			
+			- Also validate the input layout of the deferred shading and debug texture effects to make sure we're good on that end.
+			
+			- Hold on, we do see something if the position or normal map is being rendered. We can now see what ends up in the GBuffer textures.
+				- Normals need to be normalized. (heh :P)
+				
+				- That didn't seem to work, strange... The render targets might need to cleared after every render.
+					- Well, not really as they should be getting overwritten each time.
+					
+				- That's better, it worked when the position and normal members of PS_OUT for the deferred pixel shader were changed to float4 from float3.
+				
+				- Actually, the normals are in the [-1,1] range and need to be mapped to the [0,1] range for rendering.
+					- Hack the debug texture effect just to test but it looks like a modification factor may have to be added.
+					
+					- Or, we handle it in the deferred shading effect class as another shader.
+					
+				- SUCCESS!!! AND HAAK THU!!!
+					- The SRVs of the ShaderResource instances of the were being bound as resources instead of the SRVs that were actually coming in as parameters!!!
+					
+					- For consistency's sake, we should set the member SRVs to the ones being passed in.
+					
+			- Now that we've gotten to this point, lets try rendering the diffuse, specular, normal and depth maps into 4 quads.
+				- Seems simple enough, shrink 4 quads to 0.5 the size and offset by +-0.5 to position and then render a different map into each one.
+				
+				- For the final debug effect, it might be worthwhile to render text below each debug texture and pass in an offset to visualize the normal and depth maps correctly.
+		
+		- Introduction of structured buffers to the DXEffect base class. => done
+			- Might be able to reuse the createConstantBuffer method by just adding default params
+			  since the init and buffer creation code is mostly the same.
+			  
+			- Actually, we might not even need a separate struct for structured buffers,
+			  could just add a type parameter to the constant buffer struct which specifies
+			  the type of struct it is. This would also scale well.
+			  
+			- Write the deferred shading version of the texture mapping shader and look at how the lights structured buffer instance gets initialized, 
+			  a setStructuredLights() method will have to be written accordingly.
+			  
+			- Few things need to be considered:
+				- The current implementation of lights in the constant buffer involves creating a buffer which contains a preset max no. of lights.
+				
+				- The structured buffer approach doesn't allow for a max size in the shader declaration, and the Intel demo handles this by specifying
+				  the size on the App side.
+				  
+				- We can probably do this without reflection for now and NOW is probably the time to steal the StructuredBuffer class!!!
+				
+				- The structured buffers can be members of the deferred shading effect class and the setStructuredLights method will use the MapDiscard
+				  and Unmap methods to handle setting data inside it.
+				  
+				- We can add another init function which takes in the no. of lights of each type as well as a recreateLights() method which will do
+				  the actual work of (re)creating the lights' structured buffers.
+				  
+				- Just thought of something, we can create a template struct ShaderStructuredBuffer that can encapsulate a StructuredBuffer<T>
+				  and an associated createStructuredBuffer method can be written which gets the binding info using reflection and creates
+				  the buffer given the no. of elements and the bind flags as depicted in the Intel demo.
+				  
+			- The lights initialization needs to be moved from createResources() to buildShaders() so that the no. of lights of each type is available
+			  when the deferred shading effect is inited.
+			  
+			- Unable to create an empty structured buffer because the byte stride is greater than the byte width if it is empty.
+				- Didn't work, might be simplest to just avoid creating it and bind a NULL to the pipeline if it is to be empty.
+				
+				- Rather, get the binding info but don't create the structured buffer if it has to be empty.
+				
+				- Guess we didn't have this problem with constant buffers because we were always creating a MAX no. of lights
+				  in which case we would never have an empty set of lights.
+				  
+			- It looks like structured buffers get bound as shader resource views.
+			
+			- The Light structure is not being mapped in properly, investigate.
+				- Could it be that the padding in the Light structure is throwing it off?
+				
+				- Apparently, so (crap!). Probably best to make an unpadded version which will suit our needs.
+				
+			- Forgot the eye position (yeesh!) and was setting the diffuse and specular maps of the wrong resource by mistake (ugh!)
+			
+			- Getting an output now but the walls look pink and the Lenna banner is backwards, something's wrong with the normals...
+				- Actually, it looks like the specular maps only contain grayscale values which should be probably be multiplied with the light's specular colour.
+				
+			- Looks better now but the roof tiles seem to be going crazy for some reason.
+				- The weirdness starts happen when we look at the sky, is it because there's no shading params for that region?
+				
+				- Lets deal with this later, for now, avoid looking at the sky ;P
+				
+			- The other Sponza model looks better, should fix the specular map entries in the material file though...
+				- Good, we're probably better off without the big banner as it was just getting in the way...
+				
+				- Reverting back to the original Sponza model as the other one's normal maps are actually bump maps
+				
+			- Revelation with regards to the modification of the Light struct and everything that uses it to adapt to Structured Buffers.
+				- An alternate version of the struct called SLight can be written which doesn't contain the padding variables.
+				
+				- The build*Lights methods in the SceneBuilder class can be templated so that they will work with the SLight structs as well.
+				
+				- Only the deferred shading effect class needs to be modified to work with the SLight structs.
+		
+		- Deferred versions of the effects we've implemented so far. => done
+			- TexEffect
+				- Add another effect pass to the deferred shading effect for the actual deferred shading and add a private enum to control the effect that is currently being performed using toggle states.
+				
+				- Update the apply and cleanup methods to handle the passed in params.
+				
+			- NormalMappingEffect
+				- Add a pixel shader which computes the bumped normal and adds it to the normal texture render target and a toggle state to handle it's setting.
+				
+				- The getDebugInfo() method can be updated to return the states of the internal effects.
+				
+				- Spent over half an hour churning because the call to PSSetShaderResources was forgotten!!!! (#slams head against desk)
+				
+				- Would be interesting to figure out what gets computed finally as the normal for faces which don't have a corresponding normal map...
+					- One way is to debug the normal map texture stored in the GBuffer and experiment with the normal mapping deferred pixel shader to see what happens.
+					
+					- So it looks like what happens is that if the normal map is not passed to the shader and an attempt is made to sample it, the sampled value is all 0s
+						- This would correlate with what we've seen when we forgot to set the resources in the apply() method.
+						
+					- Simplest fix is to just return the input normal in case the sampled normal is all 0s.
+				
+		- Some of the other demos online made due with only a couple of lights, should look to shadow mapping next to see how it can be integrated.
+			- Considering having a spot light move around the upper or lower chambers of the atrium.
+			
+	- Lighting setup
+		- Try rotating the point light around the atrium like we did before and see how it looks.
+		
+		- The animated spot light rotating around the bottom corridor looks promising for shadow mapping, should look into it.
+		
+		- The rotating spot light is also a great candidate for showcasing god rays.
+		
+		- Look into the sphere map encoding that's going on in the Intel demo, seems to be important when dealing with multiple lights.
+			- The normal and specular information are encoded into a sphere map during the GBuffer generation phase
+			  and decoded during the deferred shading phase. Can get to this later during the optimization phase.
+			  
+			- The lights are accummulated using additive blending. Can create a blend state for this and then apply it.
+			
+			- Strange... Putting two lights at opposite ends of the atrium results is only one side getting lit?
+				- Enabling the lights individually shows that they're working how they're supposed to be working but what changes when multiple lights are introduced?
+				
+				- ccp mistake, was referencing the parallel light's loop variable in both the point light and spot light loops (#facepalm!)
+			
+		
+	- Slight note: the window resolution at full-screen is 1920x1280 which is the same as the screen resolution, this probably explains why the performance takes a nose dive at full-screen resolution.
+		
+	- Slight segway to motion blur
+		- Motion blur seems a simple enough effect to implement quickly.
+			- Pass in current and previous view-proj matrices and the no. of samples in the constant buffer.
+			
+			- Transform the current world space position by the two view-proj matrices and compute a velocity vector from the difference.
+			
+			- Sample across the velocity vector by the given no. of samples.
+			
+			- Also refer to the quarter long project for procedural shading where we did the same thing in GLSL.
+				- Ummm, it looks like for the project the velocity vector was being passed in as a parameter from the app end (ai...) nevermind...
+				
+			- Let's see if we can make the player run by pressing the 'shift' key
+				- The run motion is discontinous, might have better luck with a toggle state and the 'CAPS LOCK' key.
+				
+			- Should change eCurrTechnique to eCurrVSTechnique since it basically decides which VS to use.
+				- Then we can have another enum for the current PS technique.
+
+			- Need to add a previous view-projection matrix as a member to the test app class.
+			
+			- Effect looks better after dividing the velocity vector by 2 but the specular map is not being applied for some reason.
+				- My bad, wasn't accumulating anything if the specular map wasn't grayscale.
+				
+				- On second thought, the effect doesn't look that great with specular accumulation.
+				
+				- Aha, the specular term was being accumulated incorrectly (fantastic!)
+				
+			- The effect actually looks a lot better in ambient light than it does in properly lit places.
+			
+			- Try actually accummulating the lighting computations across the no. of samples.
+			
+	- Rendering the model at a lower scale factor to see if we can reduce the near to far plane distances of the camera so that the depth map is clearer.
+	
+	- Would benefit to have the toggle state in the app to switch between showing the rendered scene and the Gbuffer textures.
+		- Now only need to label the individual GBuffer textures:
+			- Diffuse pos: 
+			- Specular pos:
+			- Normal pos:
+			- Depth pos:
+			
+	- Best refactor the light structured buffers and the GBuffer textures in the deferred effects pixel shaders into a common .hlsli file
+	
+	- The light attenuation factors (1/(a0 + a1*d + a2*d^2)) cause the point light to appear a lot more natural if a1 is varied as a0 causes a hard boundary.
+	
+	- Deferred shadow mapping
+		- Seems to be a simple port of the renderShadow*(V/P)S shaders for deferred shading with a few exceptions.
+			- The lights will be passed in as structured buffers and probably the light-view-projection tangents as well.
+			
+			- Can add SHADOW_VS_OUT and SHADOW_PS_OUT structs to the deferredShadingCommon.hlsli header to account for the light's view-projection-tangent point.
+			
+			- It seems we can't avoid the MAX_SHADOW_LIGHTS constant definition as we'll need it for the projected points.
+				- Actually, if we have multiple shadow lights, don't we need a texture array for the light projected points as well?
+			
+		- Also, an extra texture will be required to store the shadowing light's view-projection-tangent space point.
+			- The GBuffer class can be updated to handle this.
+			
+		- The Texture2D class supports texture arrays and the GetRenderTarget() accessor method takes in the array index as a param. We should be good to go with this.
+		
+		- Should refactor the setStructuredLights code into a template function so that structured buffers of different types can be updated.
+		
+		- Moving the inRange() helper function to lighthelper.fx as it will more widely accessible there.
+		
+		- *Now* is the time to fix the selection of deferred shading techniques.
+			- There are two 'types' of effects here:
+				- GBuffer effect: Affects the creations of the GBuffer textures (texture/normal mapping).
+					- Only VS currently affected (may extend to GS/TS stages).
+				
+				- Shading effect: Actual effects that are being implemented.
+					- Only PS currently affected (may extend to CS stages).
+					
+			- Makes sense to have two enums to control each of the above.
+			
+			- Furthermore, since the state toggling is controlled internally, no-one outside of the DeferredShadingEffect class need know about it.
+			
+			- To keep things simple, the apply method can be split into two switch statements:
+				- The first will switch based on the currently selected GBuffer effect.
+				
+				- The second will switch based on the currently selected shading effect.
+				
+				- It's already like that more or less, just needs to change to accommodate two enums.
+				
+			- Need a way to ensure that only one effect is active at a time...				
+				- We don't need toggle states, in the toggleStates() method, we will query each of the keys corresponding to the effects
+				  in an if-else if block and set the current (GBuffer/Shading) effect.
+				  
+				- Looks good!
+				
+			- The deferred shading demo (longer one) has a mostly constant light setup, the only time new lights are introduced is when the particle system takes effect.
+				
+			- The dispState() method should change to accept the following:
+				- SpriteBatchPtr
+				- FontPtr
+				- Client width
+				- Client height
+				
+				- Needed to write one and looks good! Need to work on positioning though.
+				
+			- By accepting the above, the dispState() method can control where on the screen the status text is displayed.
+			
+		- Makes sense to store the shadow mapping view-proj transforms as they're being used in the shadow map generation pass, and then add the tangent space transforms after the scene has been rendered.
+		
+		- After getting past some minor stumbling blocks, PARTIAL SUCCESS!!!!
+			- Not really, it doesn't seem to be casting the shadow quite how we expect it to be (crap!)
+			
+			- Incorrect world space position was being passed into the pixel shader (facepalm!)
+			
+		- Updating the normal mapping vertex shaders to account for bump maps (replicate first channel across all three channels).
+			- Didn't work as expected with the other sponza model, lets try with the chair.
+			
+		- Updating the model loading to work with associative arrays as that will make it more scalable.
+			- Worth creating a struct to store the following:
+				- DXModelPtr instance
+				- World space position
+				- Scale (x,y,z)
+				- Orientation (x, y, z, angle)
+				- <can add more as required>
+				
+				- Typedef-ing a map<string,BasicModelInstance> and calling it BasicModelDirectory.
+				
+			- NOTE: need to remember that the BasicModel instances need to be inited once the directory has been created by the scene builder.
+			
+		- Ugh, renderModelGBuffer is using a hardcoded model instance internally, needs to be made into a param.
+		
+		- Add a LookAt attribute for spot lights which can be used to determine the direction.
+		
+		- The shadow is being washed away by the other lights, eliminate them and see what happens...
+		
+		- Still not right, probably because the spot light lookAt vector in the shadow map generation pass is hardcoded to (0,model.y,0)! (#idiot!)
+			- LookAt is probably best computed by going along the light's direction for a fixed distance. => Wah! whatta beauty!
+			
+	- Try the random multiple point lights setup as seen in the Intel demo...
+		- Worth adding angle and animation speed to the SLight structure, shouldn't break anything since unused fields will exist anyway as the different types of lights will not use all the fields.
+		
+		- Actually, we might not need it... The initial position is going to be based off of the random angle that is selected (cos(angle), height, sin(angle))
+		
+		- Looks good but really kills performance :(... Try moving the lights...
+			- ARGH!!! Light structure in the shader doesn't match that of the updated SLight!!!! No matter, let's just update the shader structure as well as that of the original Light struct w/ the new params.
+				- That way, everyone's happy. => HOORAY!!!
+				
+		- Try having the EffectsParams take in pointers to the matrices and the light vectors instead of deep copies to save on processing speed.
+			- Didn't really help that much...
+			
+		- TODO: Really should read in the point lights system from the XML file...
+			
+	- Particle systems
+		- Many suggested methods but two basic steps are involved:
+			- Create and update particles (using a geometry shader with stream-output or possibly a compute shader (which is what we're shooting for!))
+				- The DX 11 book uses a geometry shader and the logic is pretty clear but the emission rate seems to be just hardcoded and not based on the life
+				  and max no. of particles as some of the resources we've read have shown it would make sense to be.
+				  
+				- Futhermore, there doesn't seem to be any check as to whether the max no. of particles have been emitted already.
+				
+				- What we need is a slightly modified version of the example shader to work off of the lifetime and computed emission rate of particles.
+			
+			- Render the particles (expand into quads using a geometry shader and render).
+			
+		- Lets implement a basic particle system which is CPU bound for the moment, then, the particle update portion can be attempted on the compute shader...
+			- The basic properties of each particle are:
+				initial position
+				initial velocity (both speed and direction)
+				initial size
+				initial colour
+				initial transparency
+				shape
+				lifetime
+				
+			- The ParticleSystemEffect class will extend both the ObjectV2 and DXEffect classes (on second thought, lets just extend DXEffect for now as multiple inheritance 
+																									is another detail we don't want to get stuck with at this point)....
+				- The apply method can be like that of the DeferredEffect's, i.e. taking a param struct as a parameter...
+				
+				- Experiment with using associative arrays to store the effect members which repeat often (blobs, shaders, buffers, etc.)
+				
+				- The param ctor can take an extra param, i.e., the max no. of particles.
+				
+				- Simple vertex and pixel shaders for now...
+					- Vertex shader only updates particles' position.
+					
+					- Pixel shader just colours the particles red for now.
+					
+				- Init() method does the following:
+					- Invokes the base DXEffect::Init() method.
+					
+					- Initializes the vertex buffer and index buffer to the required size.
+			
+				- Apply() method does the following:
+					- Maps the vertex buffer to process space and resets all particles whose ages have exceeded the given lifetime.
+						- For now, default all particle types to PT_FLARE (1) so that the particle system keeps going.
+					
+					- Sets the params in the vertex and pixel shaders and lets 'em rip.
+					
+				- Some interesting developments:
+					- The vertices can be bound to the compute shader as an RWStructuredBuffer and the particles can be updated there:
+						- http://www.gamedev.net/topic/622294-vertices-in-compute-shader/
+						
+					- Unfortunately, a vertex buffer cannot be bound to the compute shader using a UAV. A workaround is to store the particles in a structure buffer,
+					  send it to the compute shader to get updated and transformed. The structured buffer can then be accessed inside a subsequent vertex shader
+					  by using the semantic SV_VertexID and processed from that point forward.
+						- http://www.gamedev.net/topic/602918-structured-buffers-and-vertex-buffers/ specifies how to use SV_VertexID in conjunction with the draw call.
+						- http://www.gamedev.net/topic/617407-transforming-vertices-using-compute-shader/ links to the Hieroglyph 3 engine which depicts how this can be done.
+						
+			- Such is the plan of attack:
+				- Create a structured buffer to house the particles and first, try just rendering the particles using a plain old vertex and pixel shader by accessing the structured buffer.
+					- Lets make use of the StructuredBuffer class to create the structured buffer shall we?
+					
+					- It seems there is an HLSL intrinsic function called 'noise' which should be just what we need to generate random initial velocities... 
+						- http://msdn.microsoft.com/en-us/library/windows/desktop/bb509629%28v=vs.85%29.aspx
+						
+					- Consider accepting an initial set of effect params to initialize the particle system state.
+					
+					- Consider extending the StructuredBuffer class to accommodate another ctor which accepts initial values for non-dynamic structured buffers.
+					
+					- Consider implementing rain as it doesn't involve blending and just involves using the geometry shader to expand points into lines (possibly along the direction of velocity).
+						- The rain effect only uses the random number generation to determine a random offset from the emitter location at which to specify the initial position of the particle.
+						
+						- Consider passing in a <min,max> (x,y,z) position to specify the emitter boundaries.
+							- Need to update the EffectParams struct to account for this.
+						
+						- Infact, to keep things simple to begin with, a grid size can also be specified which will determine how many cells the emitter grid will consist of.
+							- Actually, we may not need the grid size as a random offset can be determined from the random texture which will determine a random (x,y,z) position
+							  within the <min,max> emitter box at which the newly generated particle should be placed.
+							  
+							- Now that I think about it, to sample from the random *texture*, the sampling texcoord should ideally be in the [0,1] range.
+								- Just using saturate(particle_num/total_particles + timestep) should be enough for this.
+							
+							- Lets start with an initial velocity of 0 for all the particles to begin with, and refine it once the particle system is up and running.
+								- If you think about it, the initial velocity is useful to simulate particles that are already in motion. We may not require this
+								  if we make the assumption that newly creating particles are still at birth.
+							  
+						- The initial velocity can be set to 0 for the rain effect.
+						
+						- The effect side looks good, onward to testing... *fingers crossed*
+							- Make a copy of the test scene XML for particle system testing.
+							
+							- Add the ParticleSystemEffect instance to the sandbox app and use it.
+								- Need to define the min/max bounds for the particle emission area... hardcode for now...
+								
+								- Particles structured buffer creation is failing for some reason, looks like an invalid argument. Investigate...
+									- It may be the dynamic flag that's causing the problem... yes it is (crap!), apparently a buffer bound with D3D11_USAGE_DYNAMIC conflicts with a D3D11_BIND_UNORDERED_ACCESS usage flag.
+										- Source: http://www.gamedev.net/topic/554092-dynamic-buffers-and-compute-shaders/
+										
+									- Confirm this is the issue by removing the unordered access flag. (The debug log says so as well so this is probably the case) yes it was!									
+										
+									- The workaround is (something which should have been done earlier!), adding another ctor to the StructuredBuffer class to accept init data.
+								
+								- The particle structured buffer looks like its not being inited correctly, investigate...
+									- Actually, it looks right, the time step is too low though, which is why it might not be moving...
+									
+									- Try increasing the rate of acceleration... didn't help much...
+									
+								- We know that the SV_VertexID semantic works as changing the no. in the ID3D11Context::Draw call changes the no. of particles drawn.
+								
+								- The only issue is, how do we get it to move.
+									- The position is updated as a function of the time step and the acceleration but the issue is that the change is not being accumulated.
+									
+									- The position of the particle should be updated at each step.
+									
+									- Therein lies the issue... the particles structured buffer is not being updated in the vertex shader!!!!
+									
+									- Lets try changing gParticles to an RWStructuredBuffer and seeing what happens.
+										- It's complaining about not being able to access the UAV on a feature level < 11_1.
+										
+										- Let's move on to the compute shader as initially planned because fixing this right now is not as important
+										  as getting the particle system update compute shader up and running.
+									
+						- Time to introduce the compute shader.
+							- Ccp-ed the contents of the vertex shader to the compute shader and updated the StructuredBuffer to be a RWStructuredBuffer.
+							
+							- Also, the dispatch thread ID is used to reference the particles buffer instead of the SV_VertexID.
+							
+							- We don't need the viewProj matrix in the compute shader's constant buffer, consider removing whenever.
+							
+							- Update the particle system effect class to do the following:
+								- Create and init/use the compute shader.
+								
+								- Update the constant buffers.
+								
+							- PARTIAL SUCCESS!!!! It's moving now, we just need to get a better handle of the lifetime and speed of the particles.
+							
+							- The particles seem to fall at the same time, try playing around with the no. of threads in the compute shader to see if we can get any improvement.
+							
+							- Ok, so couple of things need to change...
+								- If we're going to work with particle pools, we might need to use append and consume structured buffers to manage emission of particles
+								  as currently, all the particles are alive at the same time which is not exactly what we need.
+								  
+								- A ppt from AMD has an interesting method wherein append and consume buffers are used to populate an alive list of particles from a dead list
+								  and vice versa once the particles have outlived their usefulness.
+								  
+								- The best part is that the alive and dead lists are just uints so we might not even need to reference the particles list until we actually need it.
+								
+								- There can be two compute shaders:
+									- The first one will only generate new particles by consuming indices from a dead particles list (which is inited to all the particles)
+									  and appending them to an alive particles list.
+									  
+									- The second one will update all the particles in the alive particles list and any of which are dead will be reset and their indices
+									  appended to the dead particles list.
+								
+							- The Hieroglyph 3 engine's Particle Storm app is basically what we need, should look into adapting it for our purposes...
+								- The Insert CS spawns n particles where n is the no. of particles spawned per emission (in the app, it is hardcoded to 8)
+									- The spawning happens every time the delta time exceeds the computed throttle time (throttle time = particles_per_spawn * lifetime / total_num_particles)
+									
+									- The delta time is reset every time this happens.
+								
+								- The spawned particles are appended to an AppendStructuredBuffer.
+								
+								- The count of the no. of particles in the AppendStructuredBuffer is obtained and used as the no. of particles to be considered in the Update CS.
+									- Example: http://msdn.microsoft.com/en-us/library/windows/desktop/ff476393%28v=vs.85%29.aspx
+								
+								- In the Update CS, each thread's dispatch ID is checked against the no. of particles to see if it needs to be executed or not.
+									- This is probably because the numthreads attribute is hardcoded to [512,1,1]
+									
+								- The particles are updated and only the ones whose lifetimes have not exceeded the limit are appended to the new simulation state.
+									- The delta time is updated by the dt time step upon every invocation of the update function, this is the mistake we were making
+									  as we were just using the dt value instead of incrementing by it.
+								
+								- This new simulation state is the StructuredBuffer that will be used for rendering.
+								
+							- Lets take this step by step.
+								- First, update the m_fTimeStep member of the ParticleSystemEffect class to be incremented by dt instead of being set to it.
+									- The simulation is not working correctly in the first place, lets see if the append/consume buffers help in this respect.
+							
+								- Create the current and next simulation state structured buffers with the UAV_APPEND flags to specify append and consume structured buffers.
+									- The StructuredBuffer class will have to be updated to accommodate this, add a boolean flag at the end of the default params which will specify that the flag has to be set or not.
+									
+									- Debugging the particle storm demo app (after turning the debug flag on) shows the counts of the append/consume buffers... This should shed some light on what's going on...
+									
+									- It seems that the swapping of the append/consume buffers in the update functions is what ensures that the particles that get consumed in one frame
+									  are updated again in the next frame... Comment this section to confirm that assumption... 
+									  
+									- Yup, it doesn't produce/update any new particles once that section is commented out... This makes sense because the ping-ponging ensures that all particles that were
+									  consumed and updated are continued to be updated until the lifetimes of those particles runs out.
+									  
+									- We need to look into how easy it will be to swap the buffers on our end... Could be as simple as maintaining a flip-flop boolean which is toggled inside the update function
+									  and whose state determines which buffer should currently be used for the spawning and which should be used for the update...
+								
+								- Try spawning particles w/ a lifetime of 30 s and draw the structure count to see if it is actually increasing.
+									- Consider having a separate variable to track the time step in between particle spawns.
+									
+								- Implement the staging buffer to read the no. of particles off of the UAVs.
+								
+							- Important note: The current ID in the particle system update CS needs to be < the no. of particles and not <=.
+							
+							- Its alive!!! However! The particles don't seem to be spawning as often as they should be... Which might due to the spawn time being computed incorrectly in the first place...
+								- Ah! C++ 101 :D The variables based upon which the spawn time was being computed were declared in the class defn *after* the spawn time variable...
+								
+								- And we all know that class members are initialized in the order that they are *declared* in the class, irrespective of the order of the initializer lists.
+								
+							- Its working, but... need a better way of spawning particles from random positions within the emission area.
+								- That's better, works nicely by just multiplying the time step by 100.0f :D
+								
+							- Not bad, now to move on to expanding the points into lines. => looks good!
+								- Try mapping the raindrop texture onto the expanded lines like in the book's example code. => looks good!
+								
+								- See if blending was enabled in the example code. => Doesn't look like it.
+								
+							- Update the SceneBuilder to create a ParticleSystemEffect::EffectParams instance.
+								- But first... Update the size parameter to be a DXVector3. Actually, defer till after SceneBuilder has been updated so that there will be less
+								  places where changes will have to be made.
+								
+								- Consider having a struct called ParticleSystemInstance which will contain a particle system effect params and a corresponding particle system object.
+								
+								- A map<string, ParticleSystemInstance> called ParticleSystemDirectory can then be populated by the SceneBuilder class. (Much like how
+								  the BasicModelDirectory works.)
+								  
+								- Set all initial params to specified values and ones which are set during runtime can be set to default values.
+								
+								- Updated stringTo*Vector functions with variants to return DXVectors as opposed to having them be passed in as reference params just to make them more convenient to use.
+								
+								- Made ParticleSystemEffectPtr a shared_ptr so that we don't run into the same trouble we had with BasicModelPtr when we tried initializing it in the SceneBuilder class.
+								
+								- Add a default ctor to ParticleSystemEffect::EffectParams so that SceneBuilder doesn't have to set the default values for uninited params.
+								
+								- Looks good! Lets make the size a vector3 now...
+									- App code changes
+										- ParticleSystemEffect.(h/cpp): 
+											- EffectParams default ctor
+											- Particle struct
+											- apply() method: ln 43, 92
+									
+									- Shader code changes
+										- particleSystemCommon.hlsli
+										- forwardParticleSystemRainGS.hlsl
+										- particleSystemInsertCS.hlsl		
+
+							- Toggle it on/off using a keyboard ToggleState and see what needs to change...
+					
+					- Apparently, the HLSL noise function was deprecated in sm_2_0 (yeesh!). Need to find another way to generate random numbers...
+						- ccp the CreateRandomTexture1DSRV function from the DX 11 Book demo framework into d3dUtil.h/cpp (that's where it is in the actual demo framework code)
+						
+						- Infact, extend it to accept a max size so that it will be data driven...
+				
+				- Once we're confident that that's working, move on to updating the particles in the compute shader by passing it the structured buffer.
+				
+				- Finally, when its working the way we like, we can introduce the geometry shader to start billboarding and rendering the texture quads.
+				
+		- Now that we have a working rain particle system, lets try it out in the deferred shading demo:
+			- Make a note of the min/max emission locations and add a particle system entry into the scene file:
+				- Min: (-950, 2000, -108)
+				- Max: (830, 2000, 216)
+				
+			- Make a note of all the places in the demo's code where the particle system directory needs to be referenced.
+			
+			- Slight hitch, the particle systems need to be rendered *after* the deferred shading post-processing pass since it will not be stored in the GBuffers.
+			
+			- It's visible now, but the problem is that since it jreally speaking it should be rendered into the GBuffer so that depth buffer.
+				- One solution might be to have the depth buffer be passed in, so that the rain particles' depths can be compared with that of the corresponding values on the depth buffer.
+				
+				- The issue is that the texture coords used to sample the depth buffer need to be that of a full-screen quad's and not that of the individual particles.
+				
+				- We really might have to just add another render target to the GBuffer to store the rendered particles so that depth information pertaining to it will be stored
+				  in the GBuffer's depth texture.
+				  
+			- Try blending the raindrop particles with the background...
+				- The raindrop particles show up as white while they looked blue in the sandbox, turning off optimizations so that the pixel shader can be debugged in the Release build.
+				
+				- Nothing looks off with the pixel shader, the raindrop texture looks to be just alpha values though. Blending probably just needs to be enabled, lets do that.
+				
+			- Its quite possible we've been overanalyzing the situation, the answer might simply be to render the particles in a deferred manner just as we have everything else.
+				- The pixel shader in the GBuffer generation phase outputs the following, most of which we have wrt the particle system:
+					- Position
+					- Normal (can be computed as normalize(cam_pos - pos)
+					- Diffuse
+					- Specular (can be hardcoded to white)
+					
+				- The answer might simply be to write to the GBuffer textures just as we always have for the particles as well with some minor computation for the normals and specular colors.
+				
+				- Add a rendering technique enum to the ParticleSystemEffect class to allow the rendering technique to be specified as part of the particle effect params.	=> done
+					- Have it default to forward rendering.
+					
+					- Also add params for the GBuffer position, normal, diffuse and specular textures to be written to and inited to their default values in the default ctor.
+						- On second thought, we might not need these as we don't sample from them in the pixel shader, only write to them and they already bound by the time
+						  the pixel shader is executed.
+					
+				- Update the SceneBuilder class to accept the rendering technique as an input param. => done
+				
+				- Update the ParticleSystemEffect::apply() method to set the forward or deferred pixel shader depending on the set technique. => done
+				
+				- Create the shader and constant buffer objects for the deferred particle rendering technique and update the apply method accordingly. => done
+				
+				- SUCCESS!!!! We only need better lighting...
+				
+	- Skybox
+		- Seems simple enough to implement...
+			- Load a prebaked cube map .dds file into a texture/SRV and reference it in HLSL as a TextureCube.
+			
+			- Draw a unit sphere and use its local space positions (which will be in [-1,+1]) as texcoords to sample from the cube map.
+			
+			- The world transformation = scale(5.0f) * cam_position; view-projection transform is that of the camera.
+			
+			- Can put together a quick effect to implement this.
+			
+		- Worth creating a single header file to house all the shapes that are created. All the existing shapes headers can be included in it.
+		
+		- Need to create depth-stencil (LESS_EQUAL) and rasterizer states (CULL_NONE) for the skybox state.
+		
+		- The skybox renders fine without the GBuffer rendering but doesn't when the GBuffer is rendered, might have to do with the GBuffer textures not being cleared.
+		
+		- Clearing the render targets atleast got rid of the ugly tiling but the skybox is still not being rendered.
+			
+		- The skybox is failing the z test! (crap!)
+		
+		- Lets get back to this after making a quick n dirty first cut to get feedback from...
+		
+	- Tiled deferred shading
+		- Feedback received, attempt tiled deferred shading.
+		
+		- The process seems simple enough though (all done in the compute shader)...
+			- Divide the screen into 16x16 tiles (16x16 is what the Intel demo goes with and is good enough for now)
+			
+			- Do the following for each thread and its group:
+				- Read the world space position of the current thread.
+				
+				- For all the threads in the current group, determine the min and max (x,y,z) world space positions.
+					- Interlocked(Min\Max) atomic functions will have to be used along with GroupMemoryBarrierWithGroupSync()
+					
+					- Unfortunately, Interlocked(Min\Max) only work on uints so we'll have to use asuint and asfloat to go back and forth.
+					
+				- Using all the threads in the current group, index into the light list and determine which lights' bounding sphere intersect the AABB formed
+				  by the min and max (x,y,z) world space positions of the current tile.
+					- Note that we're not using threads to represent individual pixels anymore. Now they're being used to reference lights.
+					
+					- Also note that the light index per thread will be incremented by the tile size, as each thread will be referencing a light by its group index
+					  and incrementing by the tile size will avoid overlap as conflicts between group indices will be avoided.
+					  
+					- InterlockedAdd will be used to increment the total no. of lights for the current tile.
+					
+					- Any light whose bounding sphere intersects the current tile's AABB will be added to the list of lights to be considered.
+					
+				- Accumulate the lighting over all the shortlisted tiles for the current pixel after sampling the rest of the GBuffer textures for the current pixel.
+					- Note that the float4 output will have to be packed into an uint2 before being written into the output frame buffer.
+					
+					- Actually, we can go with an RWTexture2D (Texture2D bound with D3D11_BIND_UNORDERED_ACCESS and D3D11_BIND_SHADER_RESOURCE) to write to in the
+					  compute shader. The corresponding SRV can be read in a pixel shader and displayed using DebugTextureEffect.
+					
+			- Once we're done, the output frame buffer will probably have to displayed using DebugTextureEffect or something of that sort.
+			
+		- CTexture2DPtr instance added to the DeferredShadingEffect class to store the output of the tiled deferred shading compute shader.
+		
+		- Add another enum to differentiate between classic deferred and tiled deferred shading.
+		
+		- Add an instance of DebugTextureEffect which will be used in tiled deferred shading to display the tiled buffer output.
+		
+		- Init the shaders and associated buffer/resources and update the apply() method for the tiled effect.
+			- Need to store the tile size as a class member.
+			
+		- Well that's nice, its causing the display driver to crash!!!! :D
+			- Maybe using std::fill to NULL the contents of the std::arrays was a bad idea?
+			
+			- ccp mistake... Was calling PSSetShaderResources instead of CSSetShaderResources!!!! :D
+			
+			- That's not the only problem apparently... What else could be wrong?
+			
+			- Also forgot to set the lights' structured buffers. (#facepalm, really need to inspect code after ccp-ing!!!)
+			
+			- Mixed up tile-size and tile dims!!!! Actually, their definitions should really be swapped.
+			
+			- The groupshared aabb min/max points were uints instead of floats!!! (#aarghhh!!!)
+				- Well no, this is right actually as the Interlocked* atomics can only be performed on uints and the atomics are not the ones whose final values are being used anyways.
+			
+			- Try removing the call to DebugTextureEffect and see if that makes a difference.
+			
+			- One proposed answer is that the compute shader is taking too long to execute... Lets test this theory...
+				- Try modding the compute shader to just set all pixels to 1.0.
+				
+				- This definitely seems likely, it runs fine now... Keep going until we hit a wall...
+				
+				- It looks like the AABB light sphere collision detection is the first bottleneck...
+					- Surprisingly, even the single spot light collision detection caused issues...
+					
+				- The min and max AABB points look like they're being computed correctly. It must be the collision detection function.
+				
+				- Termination condition of the spot lights shortlisting for loop was incorrect!!! (#haakthu)
+					- It was lightIndex2 = nSpotLights instead of lightIndex2 < nSpotLights!!!
+					
+			- The shortlisting has issues in that it looks like the groupshared variables are not being initialized correctly.
+				- Tried just rendering all the lights and the output looks really blocky, need to investigate post figuring out the issue with the groupshared variables.
+					- The blockiness was due to the atomics... The ambient lighting was being initialized correctly as it was being set based on the values of the atomics.
+					
+					- Lets try getting the values of the atomics using the as* intrinsics.
+					
+					- Didn't help... Try rendering the no. of lights shortlisted in each tile.
+					
+					- Ah yes... The groupIndex is being calculated using the GroupID when it should be calculated using the GroupThreadID!!!! (#thunanmagane)
+					
+		- The result looks a little better (and the speed boost is pretty sweet to boot :D); but the blockiness still persists and it looks like only one half
+		  of the scene is getting shaded properly...
+			- After modifying it to compute the ambient light based off of the shortlisted points and/or spot lights, the halves of the screen which weren't
+			  being shaded properly are now completely dark. There most probably is something wrong with the collision test.
+			  
+			- Try changing the collision test to just return true all the time and see what happens... Yup, that did it...
+			
+			- Looks like we're almost there... Just need to fix the collision test...
+				- Looking at the camera position, its happening in the (-x,-y,-z) halves of the world.
+				
+				- Lets try a quick and dirty hack, compute the center of the bbox and return whether the distance between the two centers is <= the radius.
+				
+				- Its definitely a sign issue, the opposite half of the world gets rendered if the check is modified to radius <= center_dist.
+				
+				- Reversing the condition also causes a larger portion of the scene to be rendered which isn't exactly split down the middle.
+				
+				- Methinks it is the radius of the lights but changing that didn't seem to make a difference... Could it be the rotation radius?
+				
+				- Try rendering the no. of lights per tile again and see if it correlates with what we're seeing in the final output.
+				
+				- PARTIAL SUCCESS!!!! The quick sphere->sphere intersection hack works, was computing extent as a float3 instead of as distance. (yeesh!!!)
+				
+				- Not much of a speed gain realistically speaking as the whole scene is being lit up more or less by all the lights...
+				
+				- Lets put off fixing the hack till we've ported the motion blur and shadow mapping effects over...
+				
+		- Refactor the code so that all common global variables and the lights shortlisting function go into a common header. => That was simple enough...
+		
+		- Port motion blur...
+			- Should be a simple ccp...
+			
+			- The motion blur effect is barely visible, probably because the offset is now computed in uint instead of float and the range is now [0,width/height] as opposed to [0,1].
+			
+			- We'll need to map the homogeneous clip space position to viewport coords to get the right effect.
+			
+			- Looks good, this would really take shape with the mouse motion. => Didn't really work out that well, the mouse motion is too rapid.
+			
+			- It looks like some of the homogenous clip values are going out of range, they would ordinarily be clipped but we should probably just clamp them to [-1,1].
+			
+			- Looks good but the lighting looks a little dimmer as compared to regular texture mapping, try averaging the computed lighting across the velocity vector.
+				- The lighting difference was because the specular map was being sampled at mipmap level 1 instead of at 0.
+				
+			- This looks OK for now, move on to shadow mapping.
+			
+		- Shadow mapping
+			- Yet another simple ccp... Looks good!
+			
+			- Consider adding support for PCF and toggling between different states.
+				- Should enable shadow mapping using a single toggle state and be able to cycle through the levels.
+					- The key press is too sensitive again. (yeesh!)
+					
+					- The issue is that the booleans which were being used to track the key states were non-static and hence, being redefined upon every function call.
+				
+				- Given the tap size and bin width (1), we should be able to figure out the min/max limits of the tap:
+					- x/y tap length = sqrt(tap size)
+					- min/max limit = +-(tap length/2 - 0.5) will ensure that the center is 0
+					
+				- Can create another shader which implements PCF.
+				
+				- Simplest way to implement the switching between the simple and PCF based shadow mapping is using a UINT to represent the tap size.
+					- The UINT can start from 0 and incremented every time. A mod by 6 (max tap length + 1) will keep it looping.
+					
+					- 0 means simple shadow mapping and other values will represent the tap size.
+					
+			- HAZZAH!!!! It works!
+				
+			- Consider repositioning the spider and its spotlight to the next level in the atrium so that the shadow is more visible.
+				- Wasn't such a hot idea, seems shadow mapping breaks at higher altitudes :( Should be investigated later.
+				
+				- The workaround is to reduce the attenuation factor of the spot light so that its brighter and the shadow is more visible.
+		
+		- Show lights per tile
+			- Add a numeric param (0/1) to the shaders and a corresponding toggle state to DeferredShadingEffect.
+			
+			- Looks like member variables are being used instead of toggle states. A simple boolean should suffice.
+			
+			- A toggle state would work much better here.
+			
+			- Blech! There's something still wrong with the lights shortlisting. Its only working for +ve x, y and z.
+			
+			- Let's figure this out... Write a little test program to test out what we get with different params for the light tile intersection algorithm.
+			
+			- That didn't help too much. Although a new discovery was made, the graphics debugger allows a specific (x,y,z) thread group and a specific (x,y,z) thread to be debugged. (neato!)
+			
+			- Testing the last thread in the last thread group shows the min z value of the AABB coming out at some atrociously high value but that might be an edge case.
+			
+			- Should try one in the black area which didn't intersect any lights.
+				- Same thing again, the z value is getting ridiculously high. What could be causing it?
+				
+				- Try reducing the intersection test to just x and y and see if that helps. 
+					- A larger portion of the scene is being lit and the lights per tile looks normal. Should do the same test against x and y to see if they have a similar issue.
+					
+				- Just thought of something, could it be truncation issue with it not being able to handle -ve values since the atomics are uints?
+				
+				- SHAHBAASH!!!! That was indeed the issue! Looks great now!
+				
+		- There's still a bit of blockiness in the lighting near the rear of the atrium that needs to be investigated...
+			
+		- Add lights near the roof of the atrium to cover up the black tiles.
+			- Add them as we go around the top of the atrium.
+			
+			- Need to split the point lights into stationary and moving.
+			
+			- Need to update the movePointLightsPattern function to take in a start and end indices into the entire point lights array.
+			
+			- Looks ok but the blockiness is getting exaggerated. (Really should figure out what that is...)
+		
+	- Motion blur needs fixing. Effect doesn't look very convincing right now.
+		- Dividing velocity vector by 2 as it was in the GPU gems article instead of by the no. of samples.
+		
+		- No. of samples required is reduced now.
+		
+	- Blockiness investigation.
+		- Potential suspects.
+			- Ambient lighting.
+				- Clear. Didn't make a difference upon disabling.
+				
+			- Light culling.
+				- Yup. It's the light culling intersection test. (crap!)
+				
+				- To be honest, it wasn't the intersection test last time. It was the AABB computation which was thrown off by using uints instead of ints for the Interlocked(Min/Max) tests.
+				
+				- Again, the blockiness seems to be rampant in the -ve x,y,z spaces.
+				
+				- Hold on, could it still be the groupshared variables...
+					- Changing them to int solved the problem of nothing being detected in the -ve spaces but the initializing value for all the sMax(x/y/z) variables is still set to 0,
+					  which would be OK for uints but not for ints.
+					  
+					- It definitely has something to do with the min/max comparisons. The blockiness on the spot light floors went away when the init values were reduced but performance
+					  also took a hit the further it went down.
+		
+		- HAZZAH!!!! Our troubles are over! A beautiful piece of code which took care of the appropriate int representation of -ve floating point numbers came to our rescue.
+		
+	- Just realized, in the motion blur shader we were accounting for the specular map containing grayscale values which we're not doing in the other shaders...
+	
+	- Motion blur should be a post-processing effect, not one which happens while lighting computations are going on!!! (Thu!)
+		- Should be able to put this together quickly as a simple pixel shader.
+		
+		- Pass in the current, previous view projection matrices as well as the position and final colour outputs.
+		
+		- Compute velocity vector as usual.
+		
+		- Use velocity vector to interpolate over the final colour output.
+		
+		- Average the results to get the final colour.
+		
+		- Need to update the apply method to use the standard tiled deferred CS and the debug texture VS and motion blur PS for this effect.
+			- Slightly ugly but should get the job done.
+			
+	- Assimp model's material info also contains specular exponent information. Would be useful to add this to the deferred renderer. It could be just added to the normal map GBuffer texture by extending it to a float4.
+		float shininess;
+		mtl->Get( AI_MATKEY_SHININESS, shininess );
+		
+		- A lot of things need to change for this to happen, need to plan this out.

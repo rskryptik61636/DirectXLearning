@@ -1,0 +1,54 @@
+Chapter 7 - Texturing
+
+Overview
+	- Textures are ordinarily used to store image information but can also used to store normal and depth information as well
+	
+	- Whenever a texture object is created (ID3D11Resouce in our case), bind flags need to be specified in order to create appropriate resource views so that it may be bound to the pipeline stages
+		- It seems we have slyly forgone the need to specify the bind flags with the Create(DDS/WIC)TextureFromFile helper funcs, need to verify that it takes care of that internally
+		- Seems that it uses D3D11_BIND_SHADER_RESOURCE by default, which explains why we've been able to get away with it so far because we've used it only as textures to be sampled in the pixel shader!
+		- Need to keep that in mind when using textures for other purposes
+		- There doesn't seem to be a way to specify bind flags with Create(DDS/WIC)TextureFromFile (great!), need to figure out a way around this
+		
+	- Texture objects have type formats associated with them (DXGI_FORMAT_R32G32B32_FLOAT, DXGI_R8G8B8A8_UNORM, etc.) which can be specified at creation time,
+	  or DXGI_FORMAT_R8G8B8A8_TYPELESS can be specified to indicate a typeless memory buffer which can be given a concrete type at run-time
+		- For performance reasons, it is recommended that the type be specified up-front so that Direct3D can optimize access to it, which it cannot do it typeless is used
+		
+Texture coordinates
+	- Texture coordinates (designated as (u,v)) are in image coordinates (top-left corner origin) and in the range [0,1]
+	
+	- Each vertex of a mesh has a corresponding texture coordinate which maps to a particular point in the texture
+	
+	- Each 3D triangle in a mesh corresponds to a 2D triangle in the texture
+	
+	- For any arbitrary point (x,y,z) in the mesh, the corresponding texture coordinate can be found by linearly interpolating
+	  the texture coordinates of the triangle vertices within which (x,y,z) lies
+	  
+Filters
+	- Magnification
+		- There are times when the mapped area is larger than the texture which will require the texture to be upsampled
+		
+		- Two times of approximation available
+			- Point filtering (nearest neighbour)  
+			- Linear filtering (bilinear interpolation)
+
+		- Type of sampling can be specified in the shader
+		
+	- Minification
+		- Used when the texture is larger than the mapped area
+		
+		- Takes advantage of mipmaps
+			- Mipmaps are downscaled versions of the original texture (generally by powers of 2) which are precomputed ahead of time either by the app or stored as part of the texture file itself (for example, .dds files)
+			
+		- For example, if the camera is moved far back and the texture is barely visible, it doesn't make sense to try and map the full size texture to its mesh
+		
+		- Instead, an appropriately sized mipmap can be used along with point or linear filtering
+			- However, in this case, point filtering is done by linearly interpolating between two points on the same mipmap level,
+			  and linear filtering is done by linearly interpolating between two points on adjacent mipmap levels
+			  
+	- Anisotropic filtering
+		- Goes one step beyond point and linear filtering and can be used to salvage detail even from extreme viewing angles
+		
+	- SamplerState
+		- Shader object which defines the type of filter to be used for sampling
+		- Values are specified in the enum D3D11_FILTER
+		

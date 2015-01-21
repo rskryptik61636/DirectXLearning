@@ -1,0 +1,217 @@
+chapter 9 - implementation notes
+
+Overview
+	- The stencil buffer allows for certain portions of the back buffer to be populated with an application defined stencil value instead of the computed scene's pixel value
+	- The composite depth-stencil buffer is the same size as the back buffer (if the stencil buffer is present, it is combined with the depth buffer)
+	- The stencil test and depth test go hand in hand, a pixel is rendered to the back buffer iff it passes both tests
+	- The stencil test is defined as: stencilRef & stencilReadMask OP value & stencilReadMask
+		- stencilRef = app defined stencil reference value via OMSetDepthStencilState
+		- stencilReadMask = defaults to 0xff (no bits masked)
+		- value = value currently on the stencil buffer
+
+Mirror app
+	- Might be good idea to create a Room object
+		- initIndexBuffer() can be empty
+		- init() will have to be overriden as we don't make use of an index buffer
+		- draw() will have to be overriden and defined as empty, drawRoom() and drawMirror() will take its place
+		- Required shader variables can be passed into drawRoom() and drawMirror() as additional parameters
+	- Rest of the implementation looks pretty similar, except for the mirror drawing
+	- Workflow
+		- Render the room and crate to the back buffer
+		- Init the stencil buffer to 0
+		- Set the depth and stencil buffer properties as follows:
+			- Enable the depth test with the standard comparison func (D3D11_COMPARISON_LESS)
+			- Enable the stencil test
+			- Set the stencil test func to always be true (D3D11_COMPARISON_ALWAYS)
+			- Set the stencil test pass op to always replace the current value on the stencil buffer with the stencilRef value (D3D10_STENCIL_OP_REPLACE)
+				- This is always going to happen at this stage since the stencil func will always return true
+			- Set the stencil test fail and depth test fail ops to keep the current value on the stencil buffer (D3D10_STENCIL_OP_KEEP)
+				- This doesn't apply exactly at this stage but is important because the mirror shouldn't be rendered in any case if its being occluded
+		- Render the mirror to its corresponding portion in the stencil buffer
+			- Given the settings of the depth-stencil buffer at this point, the non-occluded mirror portion of the stencil buffer is set to stencilRef (which in this case will be 1)
+		- Set the blend state properties as follows to prep for the reflected crate:
+			- Source blend factor to a user defined blend factor (0.65, 0.65, 0.65)
+			- Destination blend factor to the inverse of the above blend factor (0.35, 0.35, 0.35)
+			- Source alpha factor is one and destination alpha factor is zero
+			- Such a setting causes the reflected crate's colour to be a blend of 65% crate and 35% mirror
+		- Set the stencil buffer properties as follows to prep for the reflected crate:
+			- Disable depth writes on the depth buffer (this is because the mirror lies behind the wall since it is a reflection of the actual crate about the mirror plane)
+			- Enabled the depth test and set it to always return true (since the reflected crate will always have to be rendered in the mirror)
+			- Set the stencil func to pass the test iff stencilRef and the current value on the stencil buffer are equal
+		- Render the reflected crate to the back and stencil buffers
+	- Created a base class DXApp which can be extended for the purposes of all demos
+	- Consider creating separate member functions for each of the rendering and resource initialization methods for the exercises so that changes can be implemented quickly
+	- The shader used in the original demo is tex.fx, split it into vertex and pixel shader .hlsl files
+	- News flash! Each individual .hlsl file has its own properties! The idea is to modify each .hlsl file's settings individually...
+	- Works! Needed to do the following in each .hlsl file's properties:
+		- rectify the entry point name
+		- set shader model to 4_0 
+		- set the shader type (vertex/pixel)
+	- Need to make the BlobPtr objects class members so that they can be used across the buildShaders and buildInputLayout funcs
+	- Can use shader reflection to determine the input layout to the vertex shader which will be bound to the input assembler
+		- Souce: http://takinginitiative.wordpress.com/2011/12/11/directx-1011-basic-shader-reflection-automatic-input-layout-creation/
+	- Shader reflection also allows for the constant buffers to be defined dynamically, noice!
+		- Can use the variable name to determine which matrix needs to be bound to which shader variable
+		- A slight issue seems to be that any string members of the buffers in the ShaderConstantBuffer struct don't retain their values once the buffers have been initialized using reflection
+		- The issue seems to be that the character pointers of the strings go out of scope once the reflection interface has been destroyed
+		- Everything else in the buffer seems intact, another thing to consider is that we might not be able to use this function to its fullest capability at this point
+		  because we're still going to be mapping a predefined struct to a shader constant buffer via ID3D11Buffer
+	- Now, we need to figure out how ID3D11Buffer-s will map to shader constant buffers
+	- It seems that each shader constant buffer must have an equivalent struct on the app side (yeesh!)
+		- In the drawObjects() method, the struct will be mapped to the shader's constant buffer via an ID3D11Buffer interface
+		- The ID3D11Buffer interface will be bound to the shader in the buildShaders() method
+	- Makes sense for an IEffect type class to be created for every shader we write
+	- Create a header file for now which contains the structs that can be used for various shaders
+	- Hold on just a minute! The Effects11 library has the source code exposed, I can just look at to figure out how the Effects framework talks to the shaders!
+		- That wasn't as easy as expected, back off for now....
+	- Unable to create a constant buffer for the pixel shader, could it have something to do with the struct size?
+		- Seems it is, constant buffers need to be aligned on a 16-byte boundary
+	- Might be simple to get the resource bind descriptions of the constant buffers and resources via reflection
+	- Time to construct the scene, set the constant buffers and textures and try rendering just the crate
+		- Map each constant buffer to a D3D11_MAPPED_SUBRESOUCE object, set the contents, unmap it and bind the constant buffer to the shader
+		- But first!!! Need to set the world matrix for the crate and compute the WVP matrix
+		- Having some trouble unmapping the vertex shader constant buffer, seems it doesn't like the WVP matrix for some reason
+		- Needed to reinterpret the D3D11_MAPPED_SUBRESOUCE object' buffer pointer, not the pointer to the object itself! #facepalm
+		- Need to load defaultSpec.dds for the specular map
+		- Nothing, crap!
+		- Comparing with previous examples shows everything should be in order, what could be wrong?
+		- The graphical debugger is unable to capture frames, why is not drawing anything?
+		- The only difference is that the sampler state is not being defined manually, should see if that makes a difference
+		- The TexVSBuffer and corresponding struct in the shader don't match! #facepalm
+			- The structure as well as the contents don't match
+			- A slightly more robust approach could be to create a buffer which will be populated with the constant buffer contents and mapped to the constant buffer
+			- Yatah!!!!!!!!!!
+	- Onwards to rendering the room
+		- Needed to add variants of the drawRoom and drawMirror methods which work without the effects framework
+		- Wall is not being rendered, doesn't look like the vertices are setup correctly
+		- The checkerboard texture is not being tiled across the floor correctly even if the address mode is set to WRAP explicitly
+		- Try another texture and see if the issue persists
+		- It does, is the sampler state being set?
+		- Doesn't look like, it seems that one of the consequences of bypassing the Effects framework and setting the shader resources manually is that *all* the shader resources need to be defined manually
+		- It's a nice theory, prove it using shader reflection
+		- Reflection doesn't give details about resources (dammit!)
+		- Another way would be to comment out the body of the SamplerState defn
+		- That did it, looks like we have to set it manually (hurray?)
+		- That was easy! Lets put the checkerboard texture back and see how it looks.....
+		- Take a screen capture of the incorrect sampling to start off the set of bloopers
+		- The wall is not visible because the texture has not been loaded in the first place! #doublefacepalm
+		- Hurray! We are finally that much closer to actually implementing the damn effect!
+	- Before we get carried away, refactor the setting of shader constant buffers and variables into helper functions
+	- Create the rasterizer, blend and depth-stencil states after reviewing what the effect needs to do
+	- Might be worthwhile to extend the IEffect class (of DirectXTK fame) to wrap each of these effects we write
+	- Try rendering the mirror, this involves setting the depth-stencil and blend states
+		- Depth test needs to be enabled w/ the standard comparison (less)
+		- Stencil test needs to be enabled and always return true
+		- Blend state needs to produce a mix of 65% crate and 35% mirror colour
+		- Set the blend and depth-stencil states and then draw the mirror
+	- Rendering any scene object involves updating the vertex and pixer shader buffers and resources each time
+		- Should refactor the constant buffer update methods into two general methods to update the vertex and pixel shaders respectively
+		- RoomV1's drawRoom and drawMirror methods set the pixel shader's textures themselves, need to think about what is the best way to do this
+		- For now, simplest thing to do would be to add a variant of TextureBox:::draw which takes in the diffuse and specular map resource views
+	- Debugging the reflected crate
+		- Reflected crate shows up if rendered by itself with just the rasterizer state set and the associated blend and depth-stencil states disabled
+		- The original crate also shows up with the above setting
+		- Putting the blend and depth-stencil states back causes it to not show
+		- Have a feeling it has something to do with the depth-stencil state, try just the blend state
+		- Still gone, try the opposite now
+		- No dice, put the rest of the objects back and see what happens
+		- All the objects now show up, its just that the reflection doesn't work yet
+		- Seems a parameter in the blend description was missed during its specification, RenderTargetWriteMask
+			- Ahhh! The ZeroMemory call would have cleared this param and it is infact the mask that the blend value is ANDed with to get the final blend result
+		- Yatah!!!! That did it, the RenderTargetWriteMask was indeed the issue!
+		- This is important, it seems that it is unsafe to leave values in description structs unset as it can cause this sort of undefined behaviour
+	- Exercises
+		- Refactor the resource creation and draw code into functions based on which scene (default or a certain exercise) is being rendered
+			- An enum can be used to specify which scene has to be rendered
+			- This would also be a good candidate for initialization via a scene description file
+		- Experiment one
+			- Draw the wall with the depth test disabled and writes to the depth buffer enabled
+				- A correction to the documentation indicates that disabling the depth test also disables writes to the depth buffer, i.e. the whole depth testing functionality is disabled
+				- The same applies to the stencil test
+			- Draw the reflected crate with the depth test and writes to the depth buffer enabled
+			- The stencil test is disabled for both objects
+			- The wall doesn't occlude the box with these settings
+				- The wall is drawn first with the depth test disabled, hence the default clear value of the depth buffer (1, highest possible value) remains since writes to the depth buffer have also been disabled
+				- The crate is drawn with the depth test enabled, the crate thus overwrites the wall since it will pass the depth test (beating the clear value 1)
+			- Enabling the depth test on the wall results in it occluding the crate
+				- The wall is drawn first and wins the depth test against the default clear value of 1
+				- The crate is drawn second and loses the depth test against the wall's depth value as it lies behind the wall
+		- Experiment two
+			- Same as default scene but without the reverse winding accommodation in the reflected crate's rasterizer state
+			- Can just add a boolean flag to createResourcesDefaultScene() to make the change
+			- The crate is not drawn correctly as the polygons on the sides of the crate facing away from the camera are rendered since they are still facing the right way
+			- Even though the crate has been reflected, the DrawIndexed call inside TextureBox::draw() is still being passed the vertices in CW order
+		- Experiment three
+			- Same as default scene but without the stencil test for the reflected crate
+			- Can add another boolean flag to createResourcesDefaultScene() to make the change
+			- The crate is now reflected everywhere along the wall
+				- The stencil buffer is initially cleared to 0
+				- The mirror's stencil test causes the mirror portion of the stencil buffer to be set to stencilRef (always passes, stencilRef = 1)
+				- Ordinarily, the reflected crate's stencil test causes it to be rendered only in places where stencilRef == current value on the stencil buffer,
+				  i.e., in the mirror portion of the stencil buffer
+				- With the stencil test disabled in this case, the reflected crate will be rendered everywhere along the wall
+		- The crate will not be visible if the camera is swung around to face it in some cases
+			- Not visible in the default scene
+				- Blending, depth and stencil tests enabled on the reflected crate
+				- The reverse winding accommodation is enabled			
+			- Visible in experiment one
+				- There is no stencil test or blending happening in this case and only the depth test is enabled
+			- Not visible in experiment two
+				- Blending, depth and stencil tests enabled on the reflected crate
+				- The reverse winding accommodation is disabled
+			- Visible in experiment three
+				- Blending and depth tests on the reflected crate are enabled but the stencil test is disabled
+			- Given the above, it seems reasonable to assume that the key here is the stencil test as the two cases wherein
+			  the reflected crate was visible if the camera was swung around is when the stencil test was disabled
+			- The stencil test ensures that the reflected crate is visible only in the mirror region
+			
+Future work
+	- Mod the constant buffer update functions to use the reflection defined offsets for each variable
+		- The offsets can be stored in a map<var_name,offset>
+		- The D3D11_MAPPED_SUBRESOURCE object will no longer need to be mapped into a physical struct
+		- The reflection function has been written, try it out
+		- It makes more sense to have the names of the constant buffer variables extracted dynamically using reflection but in the end,
+		  some kind of mapping would ultimately be required to tie the variables in the C++ app to their counterparts in the constant buffer
+		- Seems to work well, still depends on having to know the names of the constant buffer variables beforehand but atleast avoids having
+		  to create a struct which matches the layout of the shader's constant buffer
+		
+	- Framework design
+		- Using shader reflection and the rendering context functions to interact with the shader buffers is good but need to figure out a way to make it scalable
+		  so that we don't spend too much time writing the framework and can actually get down to implementing some effects
+		- All the shader related stuff should definitely go into its own class, could be possible to do something with the IEffect interface in DXTK...
+		- Some interesting ideas come to mind...
+			- Base classes such as IEffect, IEffectLights and the like could be extended upon to create different effects
+			- DXTK has different classes for effects which are based on functionality rather than several individual small shaders (BasicEffect, AlphaTestEffect, etc...)
+			- Come to think of it, end of the day, we're going to have a bunch of effects which will be composed of their individual shader files
+			- Should take a look at the .fx files in the DXLearning book to get a better idea of how the logical grouping can take place
+		- For the purposes of the demos, it might make sense to have the EffectBase class in the DXEngine lib and since each demo is going to have its own effect more or less,
+		  the derived effect class files can live in the corresponding demo's project
+		- This makes sense because each effect can be accessed by its respective class
+		- Think about this a little more before proceeding....
+		- For the effect class, don't make assumptions about which member variables are being used and just have the parameters be passed in
+	
+	- Depth complexity exercise
+		- Considering the approach of each effect having its own class, this exercise could be completed quite simply with one effect for texture mapping and the other for simple colouring
+		- For now though, could just modify the current demo to perform this exercise
+		- Add the simple colour shader to the project and create another set of exercise helper functions
+		- Can skip the crate reflection and use the depth-stencil states for the depth complexity calculation
+		- The vertex layout needs to be updated if we're going to be drawing a single coloured quad
+		- Need to change the createInputLayoutFromShaderInfo function to take in the input layout pointer (which is the way it was to begin with, curses!)
+		- Need to extend the ObjectV2 class to create a coloured quad
+		- Or... could write a drawQuad function which draws a quad of the given colour
+		- Not that much trouble to extend ObjectV2, no primitive for quads so we'll just render as triangles (that was easy :) i think...)
+		- Now to draw the quads for depth complexity
+			- Assuming a max depth complexity of 10 (for now), could just take the current stencil buffer value and divide by 10
+			- Need a member function to update the color vertex shader constant buffer
+			- That was easy!
+			- This causes a drop in the frame-rate though, could it be that the dynamic creation of quads is that expensive?
+			- The frame rate drop increases as the no. of iterations in the depth complexity loop is increased
+			- Add a method to change the color dynamically
+			- Doesn't work, probably because the init() method creates an immutable buffer and if the color needs to be updated dynamically,
+			  we'll probably need to map the buffer to 
+			- Forgot to specify the D3D11_CPU_ACCESS_WRITE flag for the CPUAccessFlags parameter of the vertex buffer description
+			- Forgot to increment the data pointer while updating the vertex colours (#facepalm)
+			- Definitely an improvement in speed but it still does increase with time
+		- Can add a DeviceContextPtr to ObjectV2, about time 
+Quick thought
+	- To render the depth buffer and normal maps to the back buffer, the simplest thing to do might be to just have an option to do it in the pixel shader

@@ -1,0 +1,54 @@
+The MultiViewSoftShadows D3D11 SDK demo reveals the secret to creating an array of depth buffer textures for multiple lights.
+
+The trick is to have a texture array and two types of depth-stencil views. 
+	- The first one is a single depth stencil view to a texture array that encompasses all the textures which is used just to clear all the depth buffers.
+	
+	- The second one is individual depth stencil views for each texture in the array, each of which is used to access individual textures in the array.
+
+Need to extend the ShadowMap class to support multiple depth buffers.
+	- The format and array size need to be modified for multiple lights.
+	
+	- Makes sense to create a texture array all the time, make the change once the shader has been updated to work with a Texture2DArray for the shadow map.
+	
+	- Even the input light view proj tangent matrix and corresponding projected light space tex coords have to become arrays to account for multiple lights.
+	
+	- Should refactor the function that populates the light array in the constant buffer into a generic function that can populate arrays in the constant buffer. => done
+		- A template function should do the trick, then it'll work for any type of data.
+
+	- Update the light specific shadow mapping effect shader variables and app code to work as arrays.
+		- Shader updates
+			- VS
+				- VS_OUT::posLightT becomes an array of size MAX_SPOT_LIGHTS				
+				- cbPerObject::gLightViewProjTangent becomes an array of size MAX_SPOT_LIGHTS
+				
+			- PS
+				- gShadowMap becomes a Texture2DArray and all calls to Sample(CmpLevelZero) need to include the current light index 'i'
+				  along with the xy texcoord.
+				  
+		- Code updates
+			- ShadowNormalMappingEffect
+				- setSecondPassLightWorldViewProjTangentMatrix needs to be passed a std::vector<DXMatrix>
+				
+			- DXSandboxApp
+				- The scene will be rendered once for each light in the first pass.
+				
+				- The view-proj-tangent matrices of all the lights will be stored in a vector and passed as a param to the effect for the second pass.
+				
+	- Come to think of it, if the input light view proj tangent matrices to the first pass' vertex shader is an array,
+	  we will still only need to render the scene for the first pass once and not once per light as originally imagined.
+		- This is only for the second pass, the first pass will need to have the scene rendered once per light as
+		  the depth map will have to be changed for each light.
+		  
+	- Same old issue of the depth map not being released, but some new light has been shed on the situation...
+		- Just setting any old resource slot to NULL doesn't unbind the depth map SRV from the pixel shader,
+		  the slot TO WHICH THE SRV IS BOUND must be cleared!
+		  
+		- Add a method to null this specific bind point
+		
+	- Another lesson learned, HLSL is not as flexible with inlining array element calls as regular C++.
+		- Needed to store an array element inside a temporary variable to keep the shader happy.
+		
+	- Need to transpose the matrices when setting them in a constant buffer (dammit!)
+		- Rejigger the newly created template array set function and the existing matrix set function.
+		
+	- SUCCESS!!!!! We now have support for multiple lights!!!!

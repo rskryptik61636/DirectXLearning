@@ -1,0 +1,100 @@
+D3D pipeline stages
+
+- Basic information
+	- Split into two pipelines
+		- Graphics rendering pipeline: same as DX10 with additional tessellation capabilities
+		- Dispatch pipeline: for GPGPU computation
+	- The two pipelines are loosely coupled in that the same subresource data cannot be shared between them for write access or read for one and write for the other
+
+- Input Assembler
+	- Gathers vertex data and forms primitives to be rendered
+	- The vertex format is specified by an input layout (ID3D10InputLayout)
+	- Vertex buffers are created to hold the vertex data of objects which are to be rendered
+	- Input layouts and vertex buffers need to be bound to the Input Assembler before they can be used
+		- Input layouts = IASetInputLayout
+		- Vertex buffers = IASetVertexBuffers
+	- ID3D10Device::Draw(Indexed) is what finally instructs the device to draw the aforementioned vertices
+	- In addition to the vertices, the type of primitives that the vertices represent must also be specified (IASetPrimitiveTopology)
+		- Line strip
+		- Line list
+		- Point list
+		- Triangle strip
+		- Triangle list
+		- Triangle adjacency list (see below)
+	- One of the types of primitives is adjacent triangle sets which are used as input to the geometry shader to create new primitives
+	- Index buffers avoid duplication of vertices by specifying primitives as offsets into a vertex buffer (set using IASetIndexBuffers)
+	- Index buffers also allow for different objects to be constructed via offsets into a single global vertex and single global index buffer
+	
+- Vertex shader
+	- Every vertex specified by the previous stage goes through the vertex shader
+	- Each vertex is output in homogeneous clip space, i.e. undergoes a perspective projection (as that is the space in which the hardware expects it in order to perform clipping)
+	- If a geometry shader is present, the projection can be deferred to it
+	- The model-view-projection pipeline is very similar to the OpenGL pipeline except for:
+		- +z being the other way, i.e. facing into the screen (Direct3D being left handed and all)
+		- Pseudo-depth is mapped in the [0,1] range as opposed to [-1,+1] as is in OpenGL... Most probably to avoid the linear mapping from [-1,+1] to [0,1] that OpenGL has to do to map depth values to the depth buffer
+			- The nice thing about [-1,+1] though, is that all x,y,z values are mapped to the same range and makes the eqn simple to understand
+	- HLSL is the shading language
+	- The shaders are written in a single .fx file
+	- The vertex shader is one of the functions in the .fx file and the input parameters correspond to the vertex format specified in the IA stage by ID3D10InputLayout
+	- Each input parameter has a semantic associated with it (POSITION, COLOR) that ties it to its corresponding component in the vertex format specification
+	- The output position (in homogeneous clip space) has the semantic SV_POSITION (SV = System Value) associated with it indicating that it is an output of the shader
+	- As previously mentioned, the vertex shader has to only output the coordinate in homogeneous clip space... The graphics hardware takes care of the perspective divide after performing clipping
+	- Like GLSL's vertex shader has input attributes, HLSL has constant buffers which allow the C++ application code to pass parameters to the shader
+	- The constant buffers can be grouped according to their frequency of usage
+		- cbPerObject = params that change per object (model-view-projection matrix)
+		- cbPerFrame = params that change per frame (lighting params)
+		- cbRarely = params that rarely change (fog params, say)
+		
+- Tessellation shader
+	- Split into 3 parts
+		- Hull shader
+			- Transforms input control points that define an output patch from the vertex shader into output control points
+			- Basically controls how much tessellation a patch gets and the size of the patch
+		- Fixed function tessellator
+			- Performs the actual tessellation based on the parameters specified in the hull shader
+		- Domain shader
+			- Transforms the output of the fixed function tessellator into points in 3D space
+			- Also shares access to the hull shader output with the fixed function tessellator
+			
+- Geometry shader
+	- Optional stage of the pipeline
+	- Takes in a primitive from the tessellation shader and maps it to zero or more output primitives
+	- Can write vertex data to memory for later rendering
+	- Must output data in homogeneous clip space
+	
+- Clipping
+	- Would have been the same as OpenGL (points that inside the canonical view vol are retained and the rest clipped) EXCEPT that z does not lie in [-1,+1] after the perspective divide
+	- The ranges of x, y and z in homogeneous clip space are as follows:
+		- -w <= x <= +w
+		- -w <= y <= +w
+		- 0 <= z <= +w
+	- Because of z, the view frustum is not mapped into a normalized cube centered around the origin ranging from -1 to +1 along x, y and z
+	- The view frustum is still a frustum and clipping is performed against the planes of the frustum
+	- Simplicity seems to have been traded for performance here as the graphics hardware can probably perform clipping faster than it can do the [-1,+1] to [0,1] mapping 
+	  that OpenGL subsequently does as part of the viewport transformation
+	  
+- Rasterization
+	- Viewport transformation
+		- The retained x and y coordinates after the perspective divide post clipping are mapped to the viewport via the viewport transformation
+		- This is where OpenGL performs the additional [-1,+1] to [0,1] mapping for depth but it is not so for Direct3D because that has already been handled
+	- Backface culling
+		- Backward facing polygons are not rendered
+		- Direct3D considers CW winding order to be front-facing and CCW for back facing (reverse of OpenGL) but that can be altered via a renderer option
+	- Vertex attribute interpolation
+		- Attributes of each vertex need to be interpolated across for all pixels of their composing primitive
+		- A perspective correct interpolation is employed which respects the primitive's orientation in 3D space (handled by the hardware)
+		
+- Pixel shader
+	- Processes each rasterized pixel fragment
+	- Pixel fragments may be clipped in the shader or beaten by another pixel fragment with a lower depth value
+	- The input of the pixel shader matches the output of the vertex (or tessellation) shader
+	- Outputs a 4D colour
+	
+- Output merger stage
+	- Pixel fragments that survive the depth/stencil buffer test are rendered to the back buffer
+	- Blending and various masking operations may be performed to blend a pixel's colour with that of the pixel that is already present on the back buffer
+			
+- Compute shader
+	- Allows the GPU to be used for general purpose computation and not be bound by the rendering pipeline
+	- Has access to fast shared memory to allow communication between groups of shader invocations
+	- The compute shader exists on the same device as all the other stages and is invoked by the Dispatchxxx commands

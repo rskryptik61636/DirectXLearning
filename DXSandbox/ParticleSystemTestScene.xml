@@ -1,0 +1,44 @@
+<!-- Scene description ile or the DXSandbox app -->
+<Scene name="ParticleSystemTest">
+	<TextureRoot>N:\DirectXLearning\textures\</TextureRoot>
+	<ShaderRoot>N:\DirectXLearning\shaders\compiled\</ShaderRoot>
+	<Camera Position="200.0 0.0 -200.0"
+			LookAt="0.0 -200.0 0.0"
+			Up="0.0 1.0 0.0"
+			FieldOfView="45"
+			NearPlaneDist="1.0"
+			FarPlaneDist="10000.0"
+			MotionFactor="250.0"
+			RotationFactor="1.0"
+			/>
+	<Lights>
+		<!-- Ceiling -->
+		<PointLight Position="0.0 200.0 0.0"
+					Ambient="0.2 0.2 0.2 1.0"
+					Diffuse="1.0 1.0 1.0 1.0"
+					Specular="1.0 1.0 1.0 1.0"
+					Attenuation="2.0 0.0 0.0"
+					Range="5000.0"
+					/>
+					
+		<SpotLight 	Position="0.0 0.0 -150.0"
+					Ambient="0.2 0.2 0.2 1.0"
+					Diffuse="1.0 1.0 1.0 1.0"
+					Specular="1.0 1.0 1.0 1.0"
+					Attenuation="1.0 0.0 0.0"
+					Range="10000.0"
+					Power="64.0"
+					/>
+	</Lights>
+	<ParticleSystems>
+		<Rain 	Name="Rain"
+				MaxParticles="5120"
+				Lifetime="0.5"
+				Size="1.0 7.0 0.0"
+				EmitterMinPosW="-200.0 200.0 -200.0"
+				EmitterMaxPosW="200.0 200.0 200.0"
+				InitialAcceleration="0.0 -9.8 0.0"
+				InitialVelocity="0.0 0.0 0.0"
+				/>
+	</ParticleSystems>
+</Scene>

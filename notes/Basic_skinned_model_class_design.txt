@@ -1,0 +1,166 @@
+Basic/SkinnedModel class design
+
+Overview
+	- Create classes to handle basic/skinned models using Assimp
+	
+Implementation
+	- Traverse basic Assimp demo and investigate DX11 book samples to come up with ideas for the class design
+		- The BasicDemo class takes in the path to the model file and the textures dir.
+		
+		- The models are loaded using the custom M3DLoader class (we'll roll our own to work with Assimp)
+		  and textures are loaded using a TextureManager class (we can just use the DirectX texture loading methods).
+			- Now would be a very good time to create the helper function to load textures based on the file extensions.
+			
+		- Vectors of shader resource views are used to store diffuse and normal maps.
+			- The textures are stored in an associative array in the Assimp demo, it makes sense to follow suit as
+			  having the associative array key be a string makes it easy to reference each texture.
+			  
+			- The first texture in the list of textures seems to be the texture dir itself, might just want to ignore this one.
+		
+		- The Import3DFromFile in the Assimp demo is where the model is loaded from disk.
+			- Assimp::Importer::ReadFile is the method used to read the model, we may need to set some options to ensure that the model is loaded correctly.
+			
+			- ReadFile options:
+				- aiProcess_MakeLeftHanded: to make it follow a left-handed coordinate system like that of DX.
+				- aiProcess_FlipWindingOrder: to make it follow a CW winding order like that of DX.
+				- aiProcess_FlipUVs: to flip the y component of the tex coords to transform them from cartesian to image space coords, so that they can be used directly in DX.
+				- aiProcessPreset_TargetRealtime_Quality: default option used in the Assimp demo.
+				
+		- The recursive_render method in the Assimp demo is where the model is rendered.
+			- The model is rendered using immediate mode, we can probably use this approach to build the vertex and index list.
+			
+			- We'll probably need to incorporate the BasicDemo class' concept of Subset structs so that each individual subset of the mesh can be rendered correctly
+			  given its corresponding primitives and material.
+		
+			- Each subset is represented by an aiMesh instance that has a corresponding material.
+			
+			- Each aiMesh has a set of faces which is represented as aiFace (these are the primitives that will be rendered).
+				- The no. of indices per face can be used to determine the primitive topology, it might make sense to store this piece of information as a class member.
+				
+			- gl(Push/Pop)Matrix are used to transform each node of the mesh with respect to its global position, need something to emulate this.
+			
+	- Create a small test program to try loading a mesh and initializing its data.
+		- Create an 'AssimpInclude.h' header file to handle the loading of all Assimp headers and linking against the libs.
+		
+		- Try to load the model with the appropriate settings (see above ReadFile options).
+			- Looks like we don't need to manually cleanup after ourselves if we use the C++ API (whew!)
+			
+			- Looks like Assimp's resource management scheme doesn't permit it being wrapped inside a unique_ptr :(
+			  ~aiScene looks to be handling the cleanup correctly so we should be ok.
+			  
+		- Load the scene's textures into an associative array (map<std::string, ShaderResourceViewPtr>)
+			- High time to create the texture loading helper function.
+			
+		- Whoops! Need a device and device context to load textures (dammit!), back to the sandbox app...
+			- Rather, lets create an independent one that can be experimented with freely.
+			
+	- The following has been learned about Assimp's node and model concepts.
+		- Each mesh is a physical subset of the overall model, it primarily consists of vertices and faces which index into its vertex list.
+
+		- The nodes specify the transformation hierarchy of the overall model and index into the meshes list of the overall model
+		  to specify the structure of the overall model.
+		  
+		- Our best bet might be to write our own abstractions of the Assimp classes.
+
+		- Continue with the test program and start building the abstractions once we have a better idea of how things fit together.
+		
+	- Invalidating the roles of mNum(Vertices(PerFace)/Faces) in ObjectV2 as they're not really required and unnecessarily need to be computed.
+		  
+	- aiScene pointer is going out of scope in the init method (great!)
+		- Its destructor is being invoked at the end of the class ctor (ugh!)
+		
+		- Apparently the Assimp::Importer class retains ownership of the aiScene object after creating it.
+		
+		- Assimp::Importer::GetOrphanedScene() needs to be invoked in order to take ownership of it.
+			- Source: http://stackoverflow.com/questions/16798808/pointer-addressing-to-invalid-content-after-function-return	
+			
+	- A little bit of thought needs to go into the draw method as:
+		- We need to be able to iterate over the nodes of the mesh to apply each one's transformation.
+		
+		- We'll need to expose the texture for each mesh so that it can be used.
+		
+	- aiScene::mMaterials needs to be investigated as to how it can be used to reference into the texture list.
+		- Right now we're only reading the diffuse textures for each mesh, it would be best to query if even specular, normal or bump maps are available.
+		
+		- The spider model with which we're testing seems to have only diffuse textures, makes sense to have accessor functions to specify whether
+		  a model has diffuse (or for that matter, any type of) texture available or not.
+		  
+	- Each node has the following information:
+		- Its transformation relative to its parent. (Need a matrix stack to emulate this)
+		
+		- No. of children nodes and pointers to them.
+		
+		- Indices into the mesh array of all the meshes which belong to it.
+		
+		- Need a recursive function to populate the array.
+		
+	- The recursive render works as follows:
+		- Push the current node's transformation onto the stack.
+		
+		- Render all the meshes which belong to the current node.
+			- Each mesh will have a material index which will index into the texture array.
+			
+			- After getting the material of the current mesh, the name of the key which will index into the texture associative array
+			  can be obtained by using the GetTexture method.
+			
+		- Proceed to render all the children of the current node similarly.
+		
+	- Consider creating a variant of the draw method which takes in the index of the mesh to be drawn.
+	
+	- Need to re-arrange the layouts of the vertex types so that they line up correctly with that of the shaders.
+	
+	- Only need to implement the world trans stack and draw the model.
+		- Start with the root node and then move on to drawing the entire tree. => SUCCESS!!!
+		
+		- Need to implement the recursive draw function.
+		
+		- The recursive draw function works but the model is not rendering as expected (great!).
+		
+		- This is not as easy as others said it would be, lets look at what others said.
+			- Seems like we *did* have to use the mesh's vertexStart location (facepalm!)
+			
+		- SUCCESS!!! But looks like we have to turn on the default depth stencil state.
+		
+	- We're probably ready for the Sponza scene (fingers crossed!!!)
+		- Should probably make the import options a default parameter in the DXBasicModel constructor.
+		
+		- It looks like DirectX::CreateWICTextureFromFile is having trouble with the .tga textures (ai!)
+			- It seems that a third party codec is required for .tga file support.
+			
+			- Found a third party codec's source and built it, lets see if dropping in the DLL works... didn't, registering it didn't help either (crap!)
+			
+			- Downloaded the trial version of a third party codec pack and it seems to work, have 15 days to figure out the free alternative...
+			
+		- IT'S SPONZA!!!!!!! Let's see how it sounds with music... ok, but really need to think about what can be shown on the demo reel...
+		
+	- Look at what all textures aside from the diffuse ones are available...
+		- Just by looking at the filenames, we can tell that there are specular and normal maps available.
+		
+		- Specular maps loaded w/o hassle, normal maps however don't seem to be getting loaded w/ aiTextureType_NORMALS.
+			- Need to get a count of all texture types to figure out what enum it is being classified as...
+			
+			- Seems to be recognized as height maps for some reason... should see how it fares w/ the NormalMappingEffect...
+				- Try to toggle the normal mapping effect by using a boolean flag which gets set/reset based on key press.
+					- See if the font colour can be changed easily.
+				
+			- Looks like using D3D11_APPEND_ALIGNED_ELEMENT in the input layout description when infact the elements are not necessarily aligned was a bad idea (ugh!)
+			
+			- Need to change the input layout to that of the current effect (dammit!) makes sense though as we now know that the input layout will describe what the shader will see.
+			
+	- Works but the toggle state needs to be fixed, it happens too quickly.
+		- We might be able to override the d3dApp::msgProc function and implement the toggling there.
+		
+		- SUCCESS!!! The solution was to use an additional flag to keep track of the state of the normal mapping key press.
+			- http://www.gamedev.net/topic/52674-keymouse-repeats-too-fast/
+			
+		- Makes sense to make a struct to handle these option switches
+			- option state flag
+			- option key flag
+			- corresponding key
+	
+	- Should yaw the model by 90 deg to see the normal mapping take effect correctly. => Didn't quite work out as planned.
+	
+	- Looks like the material file has a few bugs left over:
+		- The bricks bump map is set to the diffuse map by mistake (line 99)
+		- newmtl_vase was missing the bump map vase_ddn.tga (line 373)
+			

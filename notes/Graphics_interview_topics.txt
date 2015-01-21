@@ -1,0 +1,23 @@
+Graphics interview topics
+
+- 3D pipeline
+
+- Stencil buffer optimizations
+
+- Math
+	- Linear algebra
+	
+	- Dot/Cross product
+	
+- Lighting equations
+	- Phong / Blinn
+	
+	- BRDF(?)
+	
+- Demo technique details
+
+- Hardware knowledge
+
+- Data alignment
+
+- Executable working specifics

@@ -1,0 +1,13 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ImportGroup Label="PropertySheets" />
+  <PropertyGroup Label="UserMacros" />
+  <PropertyGroup>
+    <IncludePath>$(DX_LEARNING_ROOT)\include;$(DXTK_ROOT)Inc;$(EFFECTS11_ROOT);$(EFFECTS11_ROOT)inc;$(NVTOOLSEXT_PATH)\include;$(NOTES_ROOT)shading\DEVil\include;$(NOTES_ROOT)shading\lab3\devil-1.7.8\*.*;$(NOTES_ROOT)animation\lib\include;$(IncludePath)</IncludePath>
+    <LibraryPath Condition="'$(Platform)' == 'Win32'">$(DX_LEARNING_ROOT)lib\$(Configuration);$(DXTK_ROOT)lib\Desktop_2013\$(Platform)\$(Configuration);$(EFFECTS11_ROOT)lib\Desktop_2013\$(Platform)\$(Configuration);$(NVTOOLSEXT_PATH)\lib\$(Platform);$(NOTES_ROOT)shading\DEVil\*.*;$(NOTES_ROOT)shading\lab3\devil-1.7.8\*.*;$(LibraryPath)</LibraryPath>
+    <LibraryPath Condition="'$(Platform)' == 'x64'">$(DX_LEARNING_ROOT)lib64\$(Configuration);$(DXTK_ROOT)lib\Desktop_2013\$(Platform)\$(Configuration);$(EFFECTS11_ROOT)lib\Desktop_2013\$(Platform)\$(Configuration);$(NOTES_ROOT)shading\DEVil\*.*;$(NOTES_ROOT)shading\lab3\devil-1.7.8\*.*;$(LibraryPath)</LibraryPath>
+    <SourcePath>$(DX_LEARNING_ROOT)\src;$(SourcePath)</SourcePath>
+  </PropertyGroup>
+  <ItemDefinitionGroup />
+  <ItemGroup />
+</Project>

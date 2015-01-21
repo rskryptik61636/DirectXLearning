@@ -1,0 +1,33 @@
+Direct3D profiling
+
+Overview
+	- Learn about profiling D3D using NVIDIA NSight.
+	
+Implementation
+	- Tutorial videos have proven to be a bit helpful but there's just so much information that it can get a bit overwhelming.
+	
+	- After profiling the demo scene a bit, it seems that we're GPU bound (which was my initial assumption since the scene was taking longer as the no. of lights were increased).
+	
+	- It seems that a lot of time is spent in Present, and according to this link (http://tomsdxfaq.blogspot.com/), that is because the CPU is waiting on the GPU because it is overwhelmed with work.
+	
+	- Lets move on to GPU bound optimization... Well, maybe not quite yet...
+		- We might be CPU bound after all as the GPU idle graph in the graphics debugging HUD shows the GPU activity to be around 5 - 10% (yeesh!) while the CPU is maxed out at 100% (yikes!)
+			- The sandbox app shows better GPU utilization, we definitely have an issue in the demo app.
+			
+		- Hold up, false alarm. The graphs were being interpreted incorrectly! #facepalm!
+		
+		- The first graph shows how *busy* the GPU is and the second graph shows how *idle* the GPU is.
+		
+		- 5% idle is definitely a good thing!
+		
+	- A nice GPU gems article on performance profiling leads me to believe that my initial assumption (long long ago) that fragment shading is the bottleneck.
+	
+	- NSight also has the facility to add annotations which show up in the frame debugger so that we can split each frame into components and see how long each component takes.
+		- Little bit of setup required. Need to add the nvtx include and lib folders to the DXLearning property sheets and copy the nvtx DLL to the target dir.
+		
+	- The frame debugger clearly shows that the compute shader took the longest time to execute (close to 2 ms) which is what we expected in the first place.
+	
+	- Reducing the range of the spot lights made a *huge* difference. Set it to 100 as that is the value used in the original demo.
+		- This makes sense because a lot less fragments are being affected by the lights since they will be out of range.
+		
+	- Look into implementing some of the GBuffer optimizations that were used in the Intel demo.

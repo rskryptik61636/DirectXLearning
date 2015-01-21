@@ -1,0 +1,183 @@
+DXEffect design
+
+Implementation notes
+	- Look at D3D11 tutorial code and DXTK to figure out a good framework for effect classes
+	
+	- Makes sense to have a struct which groups all shader variable related info together
+	
+	- Now that I think about it, the Effects11 library has generic functions to set shader variables by type
+	
+	- Something like that would make sense and keep the app generic enough to allow it to be easily extended
+	
+	- Reflection can give us all the information about the shader variables in all the shaders
+	
+	- Vectors of shader variable info structs can store information about all the shader variables
+	
+	- Look at the DX11 book examples to see what else we may require for the geometry, tessellation and compute shaders
+	
+	- Looking at how the examples are layed out, it seems that having effect classes tailored to each particular effect might make more sense
+	  than having a generic Effects11-ish class
+	
+	- This would essentially abstract the application from effect specific details and would only require it to set params via the effect class' API
+	
+	- A base class which contains all the shader functionality that has been built so far would definitely be helpful
+	
+	- Yours truly is too lazy to write effects specifics classes more than once, to combat this sickness(?), 
+	  its worth thinking about having a single class that follows in the footsteps of Effects11
+	  
+	- Since shader files can be built by including them in the projects, the ctor can accept the names of the vertex and pixel shader cso files (required) and all others can be optional
+
+	- Methods to set shader variables (one for each type)
+	
+	- Look at MirrorApp to get a concrete idea of what we'll need for now
+		- buildShaders()
+			- Methods to create shaders given their bytecode (create*Shader, createShaders)
+			- Method to create a map of all constant buffer variables using reflection (initShaderConstantBuffers)
+				- Need to support: matrices (D3D_SVC_MATRIX_COLUMNS), raw values and shader resources (any other types)
+			- Each contant buffer is basically a chunk of byte data, when analyzing the shader to obtain info about its vars,
+			  it is possible to maintain the info list and have each set variable method update the corresponding portion
+			  of the constant buffer's byte data buffer
+	
+	- Mainly need the following functions
+		- public:
+			- apply(): applies the given effect (pure virtual) [actually, the device context doesn't need to be passed in as a parameter as it is already stored as a member during construction]
+				- *SSetShader: bind the effect's vertex/pixel/geometry/hull/domain/compute shader to the pipeline
+				- setShaderConstantBuffers()
+				- setShaderResources()
+				- setShaderSamplers()
+				- TODO: more to come
+			
+		- protected:
+			- init(): best make protected to ensure that it doesn't get accessed externally by accident
+				- createShader() for every shader that needs to be created
+				- initShaderConstantBuffers()
+				- initShaderResources()
+				- initShaderSamplers()		
+			- setShaderConstantBuffers: All the constant buffers across all shaders are set (pure virtual)
+			- setShaderResources: All the shader textures (resources) are set (pure virtual)
+			- setShaderSamplers: All the shader samplers are set (pure virtual)
+			- setShaders: All the shaders are set (pure virtual)
+			- getShaderByteCode: reads the specified shader's byte code into an ID3DBlob* (should modify to return an HRESULT)
+			- createConstantBuffer: creates a constant buffer of the specified size
+			- create*Shader: creates a vertex/pixel/geometry/hull/domain/compute shader
+			- createShaders: creates all the shaders required for the effect, basically calls to create*Shader (pure virtual)
+			- initShaderConstantBuffers: creates and initializes the constant buffers of all shaders (pure virtual)
+				- createConstantBuffer() for every buffer to be created
+			- initShaderResources: initializes the resources of all shaders (pure virtual)
+			- initShaderSamplers: initializes the sampler states of all shaders (pure virtual)
+			
+	- Need pointers to ID3D11Device and ID3D11DeviceContext
+	
+	- Structs will be needed to describe the shader variables and buffers
+		- ShaderVar
+			- std::string name
+			- D3D11_SHADER_INPUT_DESC bindDesc
+		
+		- ShaderConstantBuffer : public ShaderVar
+			- std::string name
+			- D3D11_SHADER_INPUT_DESC bindDesc
+			- ShaderCBVariableInfoList varsInfo (should rename type to ShaderConstantBufferVariableInfoList)
+				- consider making a tuple instead of a map so that the shader type info can also be stored
+				- or... a map to a pair<ShaderVariableDesc, ShaderTypeDesc> might make more sense
+				- struct is the answer!
+			- BufferPtr pBuffer
+		
+		- ShaderResource : public ShaderVar
+			- std::string strName
+			- D3D11_SHADER_INPUT_BIND_DESC bindDesc
+			- ShaderResourceViewPtr pResourceView
+			- ResourcePtr pResource
+		
+		- ShaderSamplerState : public ShaderVar
+			- std::string strName
+			- D3D11_SHADER_INPUT_BIND_DESC bindDesc
+			- SamplerStatePtr pSamplerState
+			
+	- Consider creating C++ struct equivalents of shader constant buffers right now instead of looking at a reflection based approach
+	  as it will be much easier to start off with and can avoid churning => seems we're not doing this...
+	  
+	- Moving getShaderConstBufInfo() from DXApp to DXEffect
+		- Infact, can merge getShaderConstBufInfo with createConstantBuffer since the end product will be a constant buffer
+		- Can add a BufferPtr as one of the members to the ShaderConstantBuffer struct to represent the constant buffer
+	
+	- Can create helper functions to get shader resource and sampler state info
+		- The helper functions can create the resource views and sampler states as well
+		- The resource views are currently being inited in DXApp::createResources, it should be moved to DXApp::buildShaders so that everything shader related is kept together
+		- void createResource(const wpath texturePath, const std::string &strResourceName, const BlobPtr &pShaderBlob, ShaderResource &resource)
+			- Load the texture from texturePath into resource (use the extension to determine whether the texture is a .dds file or not so that the appropriate create function can be used)
+			- Use reflection to determine the binding information of the given strResourceName
+			- Worth adding a resource to ShaderResource
+			- Actually, this function belongs under DXApp as it involves creating textures that would be specific to the app and not the shader
+			- The shader resources themselves can be ShaderVar instances as all we need to know about them is the bind desc
+				- Actually, we only need the bind points since thats all we care about
+			- The ShaderResource instances need to be defined under DXApp
+			- Now that I think about it, the ShaderResource instances can stay under DXEffect
+				- The resource and resource view instances will be defined in DXApp and passed to the respective DXEffect's mutator method
+	
+	- Looking at the rastertek tutorials, the following has become clear with respect to DXEffect::apply
+		- Each class' apply method will need to take in all the shader parameters, in which case it would not be possible to have the apply method be pure virtual
+		- The alternative is to have mutator methods for all the shader parameters
+		- The latter is preferable as shader parameters would only need to be set once by each call whereas with the former, the shader parameters will be reset with each call
+		- Now that I think about it, apply doesn't really have to be pure virtual, it just needs to fire off the setShader* methods in sequence
+		
+	- Considered implementing a SamplerStateManager class using the Singleton pattern but there are several implementation issues that we really don't need to caught up in
+		- The simplest thing to do would be to create a class that has public member functions to create each different sampler state as required
+		- Right now, all we need is the TriLinear sampler state
+		
+	- The C++ equivalents of constant buffers can be represented as member variables
+		- The constant buffer information will be used when copying variables into the shaders
+		
+	- Once TexEffect has been confirmed to work, consider another constant buffer optimization involving the following
+		- Add a std::vector<BYTE> to ShaderConstantBufferVariableInfoElement to hold the actual element
+		- Create a helper function to automatically copy the contents of each variable's data buffer into the constant buffer via the mapped subresource
+		- The final call to (V/P)SSetConstantBuffers can be done external to it so that multiple constant buffers per shader can be updated with a single API call
+		
+	- The input layout should also belong to the Effect class
+		- createInputLayoutFromShaderInfo should be moved to DXEffect
+		- If this is the case, buildVertexLayouts can be deprecated from DXApp as it will be automatically computed inside each effect class
+		
+	- Enumerate the changes to MirrorApp to work with TexEffect
+		- MirrorApp.h => done
+			- Add a TexEffectPtr as a member
+			- TexEffect specific members can be deprecated
+			- setVSConstBuf, setPSConstBuf, updateVertexShader and updatePixelShader can be deprecated
+		- MirrorApp::buildShaders() => done
+			- Instantiate the TexEffectPtr object (only the block which inits tex effect related stuff)
+		- MirrorApp::buildVertexLayouts() => done
+			- Set m_pVertexLayout to TexEffect's input layout
+		- RoomV1 => done
+			- RoomV1::drawRoom has to be split into drawWall and drawFloor which don't set the resource view, that will be done externally by TexEffect::set(Diffuse/Spec)Map
+			- RoomV1::drawMirror has to also not set the resource view		
+		- MirrorApp::drawObjectsDefaultScene() => done
+			- Calls to setVSConstBuf and setPSConstBuf can be replaced with calls to the TexEffect mutator methods
+			- Calls to VS* and PS* can be deprecated
+		- MirrorApp::drawObjectsExpOne() => done
+			- Same as for drawObjectsDefaultScene
+		- MirrorApp::drawObjectsExpFour() => done
+			- Same as for drawObjectsDefaultScene
+			- Changes pertaining to color effects can be put off until an Effect class is created for it
+			
+	- It seems calling the init() method inside the ctor was a bad idea as the object is not fully constructed
+	
+	- SUCCESS!!!! Now do the same for the color effect and get an estimate of the average turnaround time
+		- But first... try out the scalable parameter setting approach for shader constant buffer variables
+		- Steps involved
+			- Add a std::vector<BYTE> to ShaderConstantBufferVariableInfoElement as a dataBuffer member => done
+			- Create a helper function to populate the constant buffer data buffer with each variable's data buffer
+				- Params: ShaderConstantBuffer instance, Device context
+			- Update the TexEffect class shader parameter mutator funcs 
+			- Update the TexEffect::setShaderConstantBuffer method to invoke the helper function for each of the constant buffers
+			
+	- Added utility functions to set the data buffers of specified constant buffer variables with various types of data
+		- Matrices
+		- Lights
+		
+	- The normal mapping effect initShaderResources function is failing for some reason...
+		- The reflection seems to fail no matter which shader's blob is thrown at it
+		- Missing & in the pReflector.p cast (haak thu!!!!)
+		- Can't leave any constant buffer variables' buffers empty
+		
+	- SUCCESS!!! We have normal mapping!!!!
+		- Swapping between the floor and bricks normal maps do indicate that the effect is indeed working
+		
+	- Think about adding a getEffectStateInfo() accessor method which will return a string containing info about the state of an effect

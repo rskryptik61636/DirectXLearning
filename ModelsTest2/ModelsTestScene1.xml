@@ -1,0 +1,166 @@
+<!-- Scene description ile or the DXSandbox app -->
+<Scene name="ModelsTest">
+	<TextureRoot>N:\DirectXLearning\textures\</TextureRoot>
+	<ShaderRoot>N:\DirectXLearning\shaders\compiled\</ShaderRoot>
+	<Camera Position="-922.0 578.0 40.0"
+			LookAt="922.0 250.0 40.0"
+			Up="0.0 1.0 0.0"
+			FieldOfView="45"
+			NearPlaneDist="35.0"
+			FarPlaneDist="5000.0"
+			MotionFactor="500.0"
+			RotationFactor="2.0"
+			/>
+	<Objects>
+		<BasicModel	Name="Spider1"
+					Source="N:\assimp--3.0.1270-sdk\test\models\OBJ\spider.obj"
+					Position="630.0 50.0 0.0"
+					Scale="1.0 1.0 1.0"
+					Orientation="1.0 1.0 1.0 0.0"
+					/>
+					
+		<BasicModel	Name="Sponza"
+					Source="N:\DirectXLearning\models\crytek-sponza\sponza.obj"
+					Position="0.0 0.0 0.0"
+					Scale="1.0 1.0 1.0"
+					Orientation="1.0 1.0 1.0 0.0"
+					/>
+	</Objects>
+	<ParticleSystems>
+		<Rain 	Name="Rain"
+				RenderingTechnique="Deferred"
+				MaxParticles="15360"
+				Lifetime="5.0"
+				Size="1.0 7.0 0.0"
+				EmitterMinPosW="-950.0 2000.0 -108.0"
+				EmitterMaxPosW="830.0 2000.0 216.0"
+				InitialAcceleration="0.0 -9.8 0.0"
+				InitialVelocity="0.0 0.0 0.0"
+				/>
+	</ParticleSystems>	
+	<Lights>
+		<SpotLight 	Position="330.0 150.0 0.0"
+					LookAt="630.0 50.0 0.0"
+					Ambient="0.2 0.2 0.2 1.0"
+					Diffuse="1.0 0.0 0.0 1.0"
+					Specular="1.0 0.0 0.0 1.0"
+					Attenuation="0.0 0.002 0.0"
+					Range="2500.0"
+					Power="64.0"
+					/>
+					
+		<!-- Roof back light -->
+		<PointLight Position="-911.0 970.0 33.0"
+					Ambient="0.2 0.2 0.2 1.0"
+					Diffuse="1.0 1.0 1.0 1.0"
+					Specular="1.0 1.0 1.0 1.0"
+					Attenuation="0.0 0.01 0.0"
+					Range="500.0"
+					/>					
+					
+		<!-- Roof lights row 1 -->
+		<PointLight Position="-814.0 970.0 -139.0"
+					Ambient="0.2 0.2 0.2 1.0"
+					Diffuse="1.0 1.0 1.0 1.0"
+					Specular="1.0 1.0 1.0 1.0"
+					Attenuation="0.0 0.01 0.0"
+					Range="500.0"
+					/>
+
+		<PointLight Position="-418.0 970.0 -139.0"
+					Ambient="0.2 0.2 0.2 1.0"
+					Diffuse="1.0 1.0 1.0 1.0"
+					Specular="1.0 1.0 1.0 1.0"
+					Attenuation="0.0 0.01 0.0"
+					Range="500.0"
+					/>
+					
+		<PointLight Position="-50.0 970.0 -139.0"
+					Ambient="0.2 0.2 0.2 1.0"
+					Diffuse="1.0 1.0 1.0 1.0"
+					Specular="1.0 1.0 1.0 1.0"
+					Attenuation="0.0 0.01 0.0"
+					Range="500.0"
+					/>
+					
+		<PointLight Position="300.0 970.0 -139.0"
+					Ambient="0.2 0.2 0.2 1.0"
+					Diffuse="1.0 1.0 1.0 1.0"
+					Specular="1.0 1.0 1.0 1.0"
+					Attenuation="0.0 0.01 0.0"
+					Range="500.0"
+					/>
+					
+		<PointLight Position="681.0 970.0 -139.0"
+					Ambient="0.2 0.2 0.2 1.0"
+					Diffuse="1.0 1.0 1.0 1.0"
+					Specular="1.0 1.0 1.0 1.0"
+					Attenuation="0.0 0.01 0.0"
+					Range="500.0"
+					/>
+
+		<!-- Roof front light -->
+		<PointLight Position="830.0 970.0 33.0"
+					Ambient="0.2 0.2 0.2 1.0"
+					Diffuse="1.0 1.0 1.0 1.0"
+					Specular="1.0 1.0 1.0 1.0"
+					Attenuation="0.0 0.01 0.0"
+					Range="500.0"
+					/>
+		
+	</Lights>
+</Scene>
+<!--Position="0.0 150.0 -150.0"-->				
+<!--Position="190.0 677.0 500.0"-->	
+	
+		<!--<ParallelLight 	Direction="0.5 -0.5 0.5"
+						Ambient="0.1 0.1 0.1 1.0"
+						Diffuse="1.0 1.0 1.0 1.0"
+						Specular="1.0 1.0 1.0 1.0"
+						/>-->
+				
+					
+		<!-- Central light -->
+		<!--<PointLight Position="0.0 700.0 0.0"
+					Ambient="0.2 0.2 0.2 1.0"
+					Diffuse="1.0 1.0 1.0 1.0"
+					Specular="1.0 1.0 1.0 1.0"
+					Attenuation="0.0 0.01 0.0"
+					Range="10000.0"
+					/>-->
+						
+		<!-- Front bottom lion -->
+		<!--<PointLight Position="1000.0 175.0 70.0"
+					Ambient="0.1 0.1 0.1 1.0"
+					Diffuse="1.0 0.0 0.0 1.0"
+					Specular="1.0 1.0 1.0 1.0"
+					Attenuation="0.0 0.01 0.0"
+					Range="1500.0"
+					/>-->
+					
+		<!-- Rear bottom lion -->
+		<!--<PointLight Position="-1000.0 175.0 70.0"
+					Ambient="0.1 0.1 0.1 1.0"
+					Diffuse="1.0 1.0 1.0 1.0"
+					Specular="1.0 1.0 1.0 1.0"
+					Attenuation="0.0 0.01 0.0"
+					Range="1500.0"
+					/>-->
+		
+		<!-- Front top lion -->
+		<!-- <PointLight Position="850.0 700.0 70.0"
+					Ambient="0.1 0.1 0.1 1.0"
+					Diffuse="1.0 1.0 1.0 1.0"
+					Specular="1.0 1.0 1.0 1.0"
+					Attenuation="1.0 0.0 0.0"
+					Range="1000.0"
+					/> -->
+					
+		<!-- Rear top lion -->
+		<!-- <PointLight Position="-850.0 700.0 70.0"
+					Ambient="0.1 0.1 0.1 1.0"
+					Diffuse="1.0 1.0 1.0 1.0"
+					Specular="1.0 1.0 1.0 1.0"
+					Attenuation="1.0 0.0 0.0"
+					Range="1000.0"
+					/>					 -->		

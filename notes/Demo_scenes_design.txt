@@ -1,0 +1,170 @@
+Demo scenes design
+
+Sandbox scene
+	- Create a simple sandbox scene which can be used to test effects to see if they've come out correctly
+		- The project can be called DXSandbox
+	
+	- Floor with a single crate should be enough as scene objects
+		- Using GeometryGenerator, it will be useful to manage multiple objects with a single vertex and index buffer
+		- Infact, we can create a cube to simulate a room, it will need to modified so that the inner facing triangles are rendered instead of the outside facing triangles
+		- The GeometryGenerator class has instructions to do just such a thing
+		
+	- Add GeometryGenerator to DXEngine
+		- It will have to modified to work with our d3dUtil.h and DirectXMath
+		
+	- Create a lib containing all the effects for convenience sake so that they don't have to added to every project
+	
+	- A moving light would be useful to debug shaders
+		- Can look at the Lighting example app to find out how to implement it
+		
+	- One cause for concern was, if the input layout of two effects in use doesn't match, does that mean two different types of vertex buffer definitions have to be used?
+		- The answer is, no. The input layout must match the layout of the vertex buffer, therefore, it is sufficient to use just that vertex layout that matches the vertex buffer layout in use
+		
+	- Look into sorting the ShaderResource members of an effect based on bind point so that they can be set in the pixel shader dynamically
+	
+	- Things to try (and test)
+			- Alternative normal mapping impl (ala rastertek)
+				- On second thought, its basically the same thing; its just that the binormal is already being passed in
+				
+			- Multiple lights (moving even)
+				- Moving RGB coloured spot light looks nice!
+				- Render the positions of the lights using simple coloured boxes
+					- Having trouble drawing the simple coloured boxes, draw the tangent box and see if that makes a difference
+					- The transformation seems right and the ColorEffect is working, something's wrong with the SimpleBox object
+					- Two things went wrong
+						- The colour was being set *after* the vertex and index buffers were being initialized
+						- The index list was being copied in the wrong order (empty index list -> mesh data index list instead of the other way around!)
+				- Weak spot light was due to the range being less
+				- Same deal with a weak point light
+				
+			- Create the RenderStateMaker class which houses all the render states which have been created so far
+			
+			- Create another debug text window which shows the currently enabled effects
+				
+			- Actually make a room
+				- Box needs to be flipped inside out
+				- Setting the rasterizer state flips the winding order just fine but the normals need to be updated
+					- Add an option to the TangentBox class to reverse the order of the normals => looks good
+				- The parallel light seems to be doing the right thing but its kind of hard to debug the spot light without knowing its position
+					- Need to draw the light positions with a simple coloured box
+				- Draw another box in the room to see how it looks
+				- The scale of the room seems to change just by changing the texture coordinates, the texture coordinates do have to be updated
+				- Try scaling the smaller box w/o changing the texture coordinates to see what happens
+					- Twas my imagination, the changing texture gives it the appearance of differing size
+					- Add camera params to DXApp::initCamera so that the camera init can be specified by the caller
+					- On second thought, the initial idea was to have it be specified by the scene file, for now just override initCamera
+					- The initCamera function needs to be invoked in the DXApp ctor for it to work but since the object is still being constructed, it doesn't resolve correctly
+						- Find out why its not happy if moved out of the DXApp ctor
+						- The issue was DXApp::onResize was not checking to see if the m_pCamera ptr was valid before attempting to set the aspect ratio
+			
+			- Really need to implement the XML scene file functionality to get a better handle on the camera and path constants
+				- Params that need to be read
+					- Texture root
+					- Shader compiled root
+					- Camera params (including motion and scale factors)
+						- Position (default to 0,0,-100)
+						- LookAt (default to 0,0,0)
+						- Up (default to 0,1,0)
+						- FieldOfView (default to 45 degrees)
+						- NearPlaneDist (default to 1.0f)
+						- FarPlaneDist (default to 1000.0f)
+						- AspectRatio (default to clientWidth/clientHeight)
+					- Lights (need to accept default params)
+						- ParallelLight
+							- Direction
+							- Ambient
+							- Diffuse
+							- Specular
+						- PointLight
+							- Position
+							- Ambient
+							- Diffuse
+							- Specular
+							- Attenuation
+							- Range
+						- SpotLight
+							- Position
+							- LookAt
+							- Ambient
+							- Diffuse
+							- Specular
+							- Attenuation
+							- Range
+							- Power
+							
+				- Needed to change the format of m_strSceneFilePath from std::wstring to std::string to work with rapidxml
+				
+				- Enough here to create a SceneBuilder class that knows how to handle scene files
+					- Member functions to init cameras, lights and get path constants
+					- Private functions can handle the conversion of strings to different types
+					
+			- Add camera motion and rotation factors to DXCamera's params
+			
+			- Unable to modify a xml_node<>* even when passed in as a **, should try returning it as an output param
+				- Able to return as an output param, however passing in an xml_node<>* doesn't seem to work in any case
+				- Rectified by passing in xml_node<>**
+			
+		- The SceneBuilder class has exposed certain weaknesses in the DXCamera class => done	
+			- Needs to be able to handle gimble lock (lookAt direction being aligned with one of the camera axes)
+				- The approach followed in the 'Ray Tracing from the Ground Up' book's code is to hardcode the u, v, w axes to the fundamental x, y, z axes directions
+				
+			- Needs to be able to handle the eyePos and lookAt being the same
+				- Push the eye pos back 100 units and display a dialog box stating why
+				
+		- The attenutation in the scene lights seems to have an effect on which light's effect dominates
+			- The first component is the one that has the most impact, changing the others causes the light to lost its influence completely
+			
+			- With all the point lights in the scene enabled, however, it looks like only one of the them exerts the maximum influence
+				- Determined by giving all the point lights different colours
+				
+				- Enable different sets of point lights and see what the end effect is
+					
+				- It looks like the first light has the most influence, and this seems to be because the lights are not being copied into the constant buffer correctly (dammit!)
+				
+				- It looks like the HR command has a problem with asserting == operations, looks like it cannot be used as a straight replacement for assert
+				
+				- sizeof(Light) == 100 which does not align with a 16-byte boundary!!!! 
+				
+				- Crap, it looks like the author didn't plan on concatenating Light objects in the constant buffer...
+					- Should be fixed easily enough by adding padding variables at the end of the struct
+					
+					- Doesn't seem to be that straightforward, need to make more sense of HLSL's packing rules
+					
+					- The following links seem to indicate that arrays in constant buffers are automatically padded such that each element is treated as a float4
+						- http://geidav.wordpress.com/2013/03/05/hidden-hlsl-performance-hit-accessing-unpadded-arrays-in-constant-buffers/
+						- http://www.gamedev.net/topic/590226-constant-buffer-with-an-array-of-floats/
+						
+					- Try varying the max no. of lights and see what the size is when two arrays need to be passed
+						- 1 = 100
+						- 2 = 212
+						- 3 = 324
+						- 4 = 436
+						
+					- EUREKA!!! All elements of the array, save for the last one, are padded with enough bytes so as to allow them to fall on a 16-byte boundary!
+						- The last element is probably skipped because it will not want to unnecessarily allocate space for another float4 if the element immediately proceeding it
+						  is a single float and just so happens to be the last element in the constant buffer
+						  
+					- What the above discovery means is that setLights will have to account for the n-1 elements being padded whereas the last one is not
+						- Need to replace allLights with a std::vector<BYTE> instead of an std::vector<Light>
+						
+					- SUCCESS!!! The scene is now much brighter, which is what was expected...
+						
+				- Another discovery that was made is that C++ also pads structs automatically to align them with 4 byte boundaries, seemingly for performance reasons
+		
+		- Important performance note, the DX tutorials book touches on splitting cbuffers into per frame and per object buffers
+			- It seems the purpose of this is to ensure that the constant buffer members are organized such that Map operations update each constant buffer's members at the same point in time,
+			  i.e., in cbPerFrame, all of its members are updated once per frame. If some of the members were updated more than once per frame, it would have led to performance issues.
+				
+		- A utility function to create textures in DXApp would be nice	
+		
+	- The demo is in some state right now, make a first cut and get feedback on what can be improved upon.
+	
+	- Demo creation
+		
+	- Adding an additive and multiplicative term to DebugTextureEffect so that the normal map can be mapped from [-1,1] to [0,1]
+		- Setting default values of 1.0f for the muliplier and 0.0f for the additive to circumvent backward compatibility issues.
+		
+	- Add debug strings for the GBuffer debug textures and the Rain effect.
+		- Might make sense to move the GBuffer toggle state inside DeferredShadingEffect like all the other toggle states for now.
+		
+		- On second thought, would break a lot of stuff... Leave as-is for now.

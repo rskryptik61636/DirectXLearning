@@ -1,0 +1,476 @@
+DXApp design
+
+Overview
+	- Variant of GenericApp which is a bit more flexible and better suited for demos where we're going to keep breaking stuff anyways
+	
+Architecture
+
+			class DXApp : public D3DApp
+			{
+			public:
+				DXApp(HINSTANCE hInstance);								// TODO: unnecessary, following param ctor is enough
+				DXApp(HINSTANCE hInstance, std::wstring sceneFilePath);	// TODO: sceneFilePath will be an XML file which will be used to init the scene, if its empty, a default setup will be used
+					: D3DApp(hInstance),
+					mEyePos(0.0f, 0.0f, -50.0f),				 // TODO: unnecessary, initCamera() will take care of this
+					mRadius(75.0f), mTheta(0.0f), mPhi(PI*0.4f), // TODO: unnecessary, m_camera will control camera motion
+					mSceneFilePath(sceneFilePath)
+					// initialize shader and shader resource variables
+				{
+					// init the camera (TODO: consider reading this from an XML file)
+					initCamera();
+
+					// set WVP matrix to identity
+					mWVP.Identity();
+
+				}				
+
+				virtual ~DXApp();	// no impl necessary
+
+				virtual void initApp();
+				{
+					D3DApp::initApp();
+
+					mClearColor = DXColor(0.0f,0.0f,0.0f,1.0f);	// set clear color to black
+
+					// create and initialize scene objects
+					createObjects();
+
+					// build shader effects, vertex layouts and initialize all resources
+					buildShaders();
+					buildVertexLayouts();
+					createResources();
+				}				
+				
+				virtual void onResize();
+				{
+					D3DApp::onResize();
+
+					// update the aspect ratio of the camera
+					m_pCamera->setAspectRatio((float)mClientWidth / (float)mClientHeight);
+
+				}
+				
+				virtual void updateScene(float dt);
+				{
+					D3DApp::updateScene(dt);
+
+					// move/rotate the camera according to the keyboard input
+					// TODO: refactor GetAsyncKeyState call into a helper function as well as this block into a separate function called moveCamera() or something
+					moveCamera();
+				}				
+				
+				virtual void drawScene();
+				{
+					D3DApp::drawScene();
+
+					// Restore default states, input layout and primitive topology 
+					// because mFont->DrawText changes them.  Note that we can 
+					// restore the default states by passing null.
+					md3dDeviceContext->OMSetDepthStencilState(0,0);
+					float blendFactors[] = {0.0f, 0.0f, 0.0f, 0.0f};
+					md3dDeviceContext->OMSetBlendState(0,blendFactors,0xffffffff);
+					md3dDeviceContext->IASetInputLayout(mVertexLayout.p);
+					md3dDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+					// draw objects
+					drawObjects();
+
+					mSwapChain->Present(0, 0);
+				}				
+				
+			protected:
+				virtual void createResources() = 0;
+				virtual void createObjects() = 0;
+				virtual void drawObjects() = 0;
+
+				virtual void setShaderVariables() = 0;	// TODO: get rid off, sort of overkill as drawObjects should have all the code to render the scene
+				virtual void getShaderVariables() = 0;	// TODO: get rid off, sort of overkill as buildShaders should have everything we need to build the effects from the shaders
+
+				// TODO: consider making this pure virtual, even if a base class implementation is required, it is still possible to define it here inspite of being pure virtual :)
+				virtual void buildShaders() = 0;
+				{
+					DWORD shaderFlags = D3D10_SHADER_ENABLE_STRICTNESS;
+				#ifdef _DEBUG
+					shaderFlags |= D3D10_SHADER_DEBUG;
+					shaderFlags |= D3D10_SHADER_SKIP_OPTIMIZATION;
+				#endif	// _DEBUG
+
+					// TODO: this bit needs to be replaced by the individual shaders being compiled separately
+					ID3DBlob *compilationErrors = 0;
+					HRESULT hr = 0;
+					std::string shaderVersion("fx_4_0");
+					//ID3DInclude *pInclude;
+					hr = D3DX11CompileEffectFromFile(mShaderFilename.c_str(),	// effects script filename
+													0,							// D3D shader macro
+													D3D_COMPILE_STANDARD_FILE_INCLUDE,							// additional include files
+													//shaderVersion.c_str(),		// shader version
+													shaderFlags,				// shader flags
+													0,							// FX flags
+													md3dDevice,					// D3D device
+													//0,							// effect pool
+													//0,							// thread pump
+													&mFX,						// effect
+													&compilationErrors);			// errors (if any)
+													//0);							// result ptr
+
+					// @TODO: remove when done testing
+					//hr = D3DX10CreateEffectFromFile(mShaderFilename.c_str(),	// effects script filename
+					//	0,							// D3D10 shader macro
+					//	0,							// additional include files
+					//	shaderVersion.c_str(),		// shader version
+					//	shaderFlags,				// shader flags
+					//	0,							// FX flags
+					//	md3dDevice,					// D3D device
+					//	0,							// effect pool
+					//	0,							// thread pump
+					//	&mFX,						// effect
+					//	&compilationErrors,			// errors (if any)
+					//	0);							// result ptr
+
+
+					if(FAILED(hr))
+					{
+						if( compilationErrors )
+						{
+							MessageBoxA(0, (char*)compilationErrors->GetBufferPointer(), 0, 0);
+							ReleaseCOM(compilationErrors);
+						}
+						DXTrace(__FILEW__, (DWORD)__LINE__, hr, L"D3DX11CompileEffectFromFile", true);
+					}
+
+					// get shader variables here (TODO: get rid off, is too much)
+					getShaderVariables();
+				}				
+				
+				// TODO: consider making this pure virtual, DXTK offers a lot of nice helper functionality but we don't really want to throw away the ObjectV2 class either
+				virtual void buildVertexLayouts() = 0;
+				{
+					// get the pass description (TODO: this goes as mTech will no longer be available)
+					D3DX11_PASS_DESC PassDesc;
+					mTech->GetPassByIndex(0)->GetDesc(&PassDesc);
+
+					// get the vertex elements description and no. of elements of the vertex buffer corresponding to mPrimaryVertexType
+					D3D11_INPUT_ELEMENT_DESC *vertexElementsDesc = NULL;
+					UINT nElements;
+					GetVertexDesc(mPrimaryVertexType, &vertexElementsDesc, nElements);
+
+					// create the input assembler vertex layout (TODO: PassDesc.pIAInputSignature will be replaced by vertexShaderBuffer->GetBufferPointer() and
+					//													PassDesc.IAInputSignatureSize will be replaced by vertexShaderBuffer->GetBufferSize()
+					//													see: http://www.rastertek.com/dx11tut06.html )
+					HR(D3DApp::md3dDevice->CreateInputLayout(vertexElementsDesc, nElements, PassDesc.pIAInputSignature, PassDesc.IAInputSignatureSize, &mVertexLayout));
+				}	
+				
+				virtual void initCamera();	// TODO: needs to be implemented, start off by reading position off of the given XML file
+				{
+					if(m_sceneFilePath.empty())
+					{
+						DXVector3 eyePos(0.0f, 0.0f, -50.0f), lookAt(0.0f, 0.0f, 0.0f), up(0.0f, 1.0f, 0.0f);
+						float FOVAngle = 0.25f * PI;
+						float nearPlane = 1.0f, farPlane = 1000.0f;
+						float aspectRatio = (float)mClientWidth / (float)mClientHeight;
+					}
+					else
+					{
+						// TODO: read from the XML file
+					}
+					m_pCamera.reset(new DXCamera(eyePos, lookAt, up, FOVAngle, aspectRatio, nearPlane, farPlane));				
+				}
+				virtual void moveCamera(float dt);	// TODO: needs to be implemented, camera movement code goes here, custom implementation can be done if necessary
+				{
+					// define keyboard input to rotate camera and to zoom in/out (TODO: these should be defined in the config XML file)
+					static const float motionScaleFactor = 50.0f;
+					static const float rotFactor = 1.0f;				
+				
+					if(GetAsyncKeyState('A') & 0x8000)	m_pCamera->slide(-motionScaleFactor * dt, 0, 0);	// move left	
+					if(GetAsyncKeyState('D') & 0x8000)	m_pCamera->slide(motionScaleFactor * dt, 0, 0);	// move right
+					if(GetAsyncKeyState('W') & 0x8000)	m_pCamera->slide(0, 0, motionScaleFactor * dt);		// move forward
+					if(GetAsyncKeyState('S') & 0x8000)	m_pCamera->slide(0, 0, -motionScaleFactor * dt);		// move backward
+					if(GetAsyncKeyState('Q') & 0x8000)	m_pCamera->slide(0, motionScaleFactor * dt, 0);			// move up
+					if(GetAsyncKeyState('E') & 0x8000)	m_pCamera->slide(0, -motionScaleFactor * dt, 0);			// move down
+
+					if(GetAsyncKeyState('J') & 0x8000)	m_pCamera->yaw(-rotFactor * dt);	// yaw left
+					if(GetAsyncKeyState('L') & 0x8000)	m_pCamera->yaw(rotFactor * dt);	// yaw right
+					if(GetAsyncKeyState('I') & 0x8000)	m_pCamera->pitch(-rotFactor * dt);		// pitch up
+					if(GetAsyncKeyState('K') & 0x8000)	m_pCamera->pitch(rotFactor * dt);		// pitch down
+					if(GetAsyncKeyState('U') & 0x8000)	m_pCamera->roll(rotFactor * dt);			// roll left
+					if(GetAsyncKeyState('O') & 0x8000)	m_pCamera->roll(-rotFactor * dt);			// roll right
+
+					// zoom in/out according to the keyboard input
+					if (GetAsyncKeyState('Z') & 0x8000)	m_pCamera->zoomOut();	// zoom out
+					if (GetAsyncKeyState('X') & 0x8000)	m_pCamera->zoomIn();	// zoom in
+				}					
+				
+				virtual void setLights() = 0;		// TODO: derived class needs to be implement, populates the light 
+				
+				// TODO: utility class to read the shader's compiled bytecode into the given buffer
+				// source: http://gamedev.stackexchange.com/questions/49197/loading-a-vertex-shader-compiled-by-visual-studio-2012
+				void getShaderByteCode(const std::wstring strShaderPath, std::vector<char> &shaderBuf);
+
+			protected:
+				// define objects variables here
+				
+				// define lights variables here
+				
+				// TODO: specify the necessary shader interfaces in the derived class
+
+				// common variables
+				EffectPtr mFX;					// TODO: has to go
+				EffectTechniquePtr mTech;		// TODO: has to go
+				InputLayoutPtr mVertexLayout;
+				/*ID3DX11Effect* mFX;
+				ID3DX11EffectTechnique* mTech;
+				ID3D11InputLayout* mVertexLayout;*/
+				
+				// define shader variables and shader resource variables here
+
+				// define world matrix here
+
+				// common pipeline matrices
+				DXMatrix mView;				// TODO: unnecessary, should use m_pCamera->view() directly to avoid confusion
+				DXMatrix mProj;				// TODO: unnecessary, should use m_pCamera->proj() directly to avoid confusion
+				DXMatrix mWVP;
+
+				// other misc common variables
+				DXVector3 mEyePos;				// TODO: make local to initCamera()
+				float mRadius;					// TODO: unnecessary, m_pCamera will control camera motion
+				float mTheta;					// TODO: unnecessary, m_pCamera will control camera motion
+				float mPhi;						// TODO: unnecessary, m_pCamera will control camera motion
+				std::wstring mSceneFilePath;	// TODO: implement whenever we get around to it
+				VertexType mPrimaryVertexType;	// TODO: relegate to the derived class as buildShaders and buildVertexLayout are both pure virtual
+
+				// camera class object (TODO: need to add an accessor func to get the camera's eye position)
+				DXCameraPtr m_pCamera;
+				
+				// scene lights (TODO: needs to be added, on second thought, let this be defined in the derived class)
+				std::vector<Light> m_lights;
+			};
+
+Update
+	- Time for a revamp. Analyze the deferred shading demo App class to see how the DXApp class can be simplified.
+	
+		class App
+		{
+		public:
+		
+			// Ctor. All initialization happens here.
+			App(ID3D11Device* d3dDevice, unsigned int activeLights, unsigned int msaaSamples);
+				: mMSAASamples(msaaSamples)
+				, mTotalTime(0.0f)
+				, mActiveLights(0)
+				, mLightBuffer(0)
+				, mDepthBufferReadOnlyDSV(0)
+			{
+
+				// Create shaders
+				mGeometryVS = new VertexShader(d3dDevice, L"Rendering.hlsl", "GeometryVS", defines);
+
+				mGBufferPS = new PixelShader(d3dDevice, L"GBuffer.hlsl", "GBufferPS", defines);
+				mGBufferAlphaTestPS = new PixelShader(d3dDevice, L"GBuffer.hlsl", "GBufferAlphaTestPS", defines);
+				
+				...
+
+				// Create input layout. This layout can be customized based on the app.
+				{
+					// We need the vertex shader bytecode for this... rather than try to wire that all through the
+					// shader interface, just recompile the vertex shader.
+					UINT shaderFlags = D3D10_SHADER_ENABLE_STRICTNESS | D3D10_SHADER_PACK_MATRIX_ROW_MAJOR;
+					ID3D10Blob *bytecode = 0;
+					HRESULT hr = D3DX11CompileFromFile(L"Rendering.hlsl", defines, 0, "GeometryVS", "vs_5_0", shaderFlags, 0, 0, &bytecode, 0, 0);
+					if (FAILED(hr)) {
+						assert(false);      // It worked earlier...
+					}
+
+					const D3D11_INPUT_ELEMENT_DESC layout[] =
+					{
+						{"position",  0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 0,  D3D11_INPUT_PER_VERTEX_DATA, 0},
+						{"normal",    0, DXGI_FORMAT_R32G32B32_FLOAT, 0, 12, D3D11_INPUT_PER_VERTEX_DATA, 0},
+						{"texCoord",  0, DXGI_FORMAT_R32G32_FLOAT,    0, 24, D3D11_INPUT_PER_VERTEX_DATA, 0},
+					};
+					
+					d3dDevice->CreateInputLayout( 
+						layout, ARRAYSIZE(layout), 
+						bytecode->GetBufferPointer(),
+						bytecode->GetBufferSize(), 
+						&mMeshVertexLayout);
+
+					bytecode->Release();
+				}
+
+				/////////////////////////////////////////////////////////////////////////////////
+				// Create app (rasterizer, depth-stencil, blend, ...) states. App specific again.
+				/////////////////////////////////////////////////////////////////////////////////				
+				
+				{
+					CD3D11_RASTERIZER_DESC desc(D3D11_DEFAULT);
+					d3dDevice->CreateRasterizerState(&desc, &mRasterizerState);
+
+					desc.CullMode = D3D11_CULL_NONE;
+					d3dDevice->CreateRasterizerState(&desc, &mDoubleSidedRasterizerState);
+				}
+				
+				...
+				
+				/////////////////////////////////////////////////////////////////////////////////
+				// Create scene objects and perform any pending initialization. App specific again.
+				/////////////////////////////////////////////////////////////////////////////////								
+
+				// Create skybox mesh
+				mSkyboxMesh.Create(d3dDevice, L"Media\\Skybox\\Skybox.sdkmesh");
+
+				InitializeLightParameters(d3dDevice);
+				SetActiveLights(d3dDevice, activeLights);
+			}			
+
+			~App();	// dtor. Release all objects.
+			
+			void OnD3D11ResizedSwapChain(ID3D11Device* d3dDevice,
+										 const DXGI_SURFACE_DESC* backBufferDesc);	// handles when the window is resized
+
+			void Move(float elapsedTime);	// handles the motion of the lights
+
+			// Core render function. The params might not all be necessary as the app specific params can probably be encapsulated within the App class.
+			// TODO: Inspect main.cpp as well to identify possible candidates for removal/refactoring.
+			void Render(ID3D11DeviceContext* d3dDeviceContext,
+						ID3D11RenderTargetView* backBuffer,
+						CDXUTSDKMesh& mesh_opaque,
+						CDXUTSDKMesh& mesh_alpha,
+						ID3D11ShaderResourceView* skybox,
+						const D3DXMATRIXA16& worldMatrix,
+						const CFirstPersonCamera* viewerCamera,
+						const D3D11_VIEWPORT* viewport,
+						const UIConstants* ui);
+			
+			//////////////////////////////////////////////////////////////
+			// The following methods are app-specific.
+			//////////////////////////////////////////////////////////////
+						
+			void SetActiveLights(ID3D11Device* d3dDevice, unsigned int activeLights);	// Change the no. of lights that are currently active.
+			unsigned int GetActiveLights() const { return mActiveLights; }	// Get the no. of lights that are currently active.
+			
+		private:
+		
+			//////////////////////////////////////////////////////////////
+			// The following methods are app-specific.
+			//////////////////////////////////////////////////////////////		
+		
+			void InitializeLightParameters(ID3D11Device* d3dDevice);
+
+			// Notes: 
+			// - Most of these functions should all be called after initializing per frame/pass constants, etc.
+			//   as the shaders that they invoke bind those constant buffers.
+
+			// Set up shader light buffer
+			ID3D11ShaderResourceView * SetupLights(ID3D11DeviceContext* d3dDeviceContext,
+												   const D3DXMATRIXA16& cameraView);
+
+			// Forward rendering of geometry into
+			ID3D11ShaderResourceView * RenderForward(ID3D11DeviceContext* d3dDeviceContext,
+													 CDXUTSDKMesh& mesh_opaque,
+													 CDXUTSDKMesh& mesh_alpha,
+													 ID3D11ShaderResourceView *lightBufferSRV,
+													 const CFirstPersonCamera* viewerCamera,
+													 const D3D11_VIEWPORT* viewport,
+													 const UIConstants* ui,
+													 bool doPreZ);
+			
+			// Draws geometry into G-buffer
+			void RenderGBuffer(ID3D11DeviceContext* d3dDeviceContext,
+							   CDXUTSDKMesh& mesh_opaque,
+							   CDXUTSDKMesh& mesh_alpha,
+							   const CFirstPersonCamera* viewerCamera,
+							   const D3D11_VIEWPORT* viewport,
+							   const UIConstants* ui);    
+
+			// Handles skybox, tone mapping, etc
+			void RenderSkyboxAndToneMap(ID3D11DeviceContext* d3dDeviceContext,
+										ID3D11RenderTargetView* backBuffer,
+										ID3D11ShaderResourceView* skybox,
+										ID3D11ShaderResourceView* depthSRV,
+										const D3D11_VIEWPORT* viewport,
+										const UIConstants* ui);
+			
+			void ComputeLighting(ID3D11DeviceContext* d3dDeviceContext,
+								 ID3D11ShaderResourceView *lightBufferSRV,
+								 const D3D11_VIEWPORT* viewport,
+								 const UIConstants* ui);
+			
+			unsigned int mMSAASamples;
+			float mTotalTime;
+
+			ID3D11InputLayout* mMeshVertexLayout;
+
+			VertexShader* mGeometryVS;
+
+			PixelShader* mGBufferPS;
+			PixelShader* mGBufferAlphaTestPS;
+
+			PixelShader* mForwardPS;
+			PixelShader* mForwardAlphaTestPS;
+			PixelShader* mForwardAlphaTestOnlyPS;
+
+			CDXUTSDKMesh mSkyboxMesh;
+			VertexShader* mSkyboxVS;
+			PixelShader* mSkyboxPS;
+			
+			VertexShader* mFullScreenTriangleVS;
+
+			PixelShader* mRequiresPerSampleShadingPS;
+
+			PixelShader* mBasicLoopPS;
+			PixelShader* mBasicLoopPerSamplePS;
+
+			ComputeShader* mComputeShaderTileCS;
+
+			VertexShader* mGPUQuadVS;
+			GeometryShader* mGPUQuadGS;
+			PixelShader* mGPUQuadPS;
+			PixelShader* mGPUQuadPerSamplePS;
+
+			PixelShader* mGPUQuadDLPS;
+			PixelShader* mGPUQuadDLPerSamplePS;
+
+			PixelShader* mGPUQuadDLResolvePS;
+			PixelShader* mGPUQuadDLResolvePerSamplePS;
+			
+			ID3D11Buffer* mPerFrameConstants;
+			
+			ID3D11RasterizerState* mRasterizerState;
+			ID3D11RasterizerState* mDoubleSidedRasterizerState;
+
+			ID3D11DepthStencilState* mDepthState;
+			ID3D11DepthStencilState* mWriteStencilState;
+			ID3D11DepthStencilState* mEqualStencilState;
+
+			ID3D11BlendState* mGeometryBlendState;
+			ID3D11BlendState* mLightingBlendState;
+
+			ID3D11SamplerState* mDiffuseSampler;
+
+			std::vector< std::tr1::shared_ptr<Texture2D> > mGBuffer;
+			// Handy cache of list of RT pointers for G-buffer
+			std::vector<ID3D11RenderTargetView*> mGBufferRTV;
+			// Handy cache of list of SRV pointers for the G-buffer
+			std::vector<ID3D11ShaderResourceView*> mGBufferSRV;
+			unsigned int mGBufferWidth;
+			unsigned int mGBufferHeight;
+
+			// We use a different lit buffer (different bind flags and MSAA handling) depending on whether we
+			// write to it from the pixel shader (render target) or compute shader (UAV)
+			std::tr1::shared_ptr<Texture2D> mLitBufferPS;
+			std::tr1::shared_ptr<StructuredBuffer<FramebufferFlatElement> > mLitBufferCS;
+
+			// A temporary accumulation buffer used for deferred lighting
+			std::tr1::shared_ptr<Texture2D> mDeferredLightingAccumBuffer;
+
+			std::tr1::shared_ptr<Depth2D> mDepthBuffer;
+			// We also need a read-only depth stencil view for techniques that read the G-buffer while also using Z-culling
+			ID3D11DepthStencilView* mDepthBufferReadOnlyDSV;
+
+			// Lighting state
+			unsigned int mActiveLights;
+			std::vector<PointLightInitTransform> mLightInitialTransform;
+			std::vector<PointLight> mPointLightParameters;
+			std::vector<D3DXVECTOR3> mPointLightPositionWorld;
+			
+			StructuredBuffer<PointLight>* mLightBuffer;
+		};	  	

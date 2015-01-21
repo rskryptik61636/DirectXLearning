@@ -1,0 +1,5 @@
+DXLearning env variables:
+
+$(DX_LEARNING_ROOT): N:\DirectXLearning
+$(NOTES_SHADING_ROOT): N:\notes\shading
+$(DX_LIBS_ROOT): "C:\Program Files (x86)\Microsoft DirectX SDK (June 2010)"

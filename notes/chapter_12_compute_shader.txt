@@ -1,0 +1,112 @@
+Chapter 12 - Compute Shader
+
+Overview
+	- The compute shader can be used to perform GPGPU
+	
+	- Data parallel algorithms benefit greatly from being performed on the GPU as it has a lot more cores that can process data than the CPU
+	
+	- Any processing done on the compute shader can be bound directly to the rendering pipeline and doesn't require CPU intervention (which avoids the bottleneck of transferring data b/w the CPU and GPU)
+	
+	- The compute shader is not part of the rendering pipeline but has read/write access to GPU resources
+	
+	- This allows it to perform computation without the need to draw anything
+	
+Threads and thread groups
+	- Execution threads are divided into thread groups, each of which is processed by a GPU multiprocessor
+	
+	- Atleast one thread group per multiprocessor should be defined, but two thread groups would be recommended as it can switch to processing the other thread group
+	  in case the thread group it is currently processing is undergoing a stall (a stall occurs when the shader is waiting on some other operation before it can proceed)
+		- As many warps as possible should be running to hide latencies
+	  
+	- Threads in a thread group are further divided into warps (32 threads per warp for NVIDIA GPUs) or wavefronts (64 threads per warp for AMD GPUs)
+		- The no. of threads in a thread group needs to be a multiple of the warp size
+		- Note that if the no. of threads is a multiple of the wavefront size (64), it is automatically a multiple of the warp size (32), hence this will work for both GPUs
+		
+Texture input and output data structures
+	- Texture inputs are standard shader resource views (which are read only)
+	
+	- Texture outputs are defined as unordered access views (which have read/write access)
+		- The dimensions of the output type need to be mentioned in angle brackets <float4>
+		
+	- Unordered access views have to be bound with the D3D11_BIND_UNORDERED_ACCESS flag
+	
+	- Textures are indexed using a thread's dispatch ID, from which an xy offset can be obtained
+	
+	- Compute shaders cannot sample from textures using the Sample method (which does not require a mip-map level to be specified)
+	  as it is disconnected from rendering and therefore, has no knowledge of which is the best mip-map level to be used for the current frame
+		- Another method called SampleLevel is used wherein the mip-map level has to be manually specified
+		
+	- Also, the xy offset is the thread's dispatch ID are integer indices and in order to be interpreted as texture coordinates,
+	  they need to be divided by the texture's width and height respectively
+	  
+Structured buffers
+	- Structured buffers hold multiple instances of the same type of structured data (think C struct), very much like an array
+	
+	- Structured buffers are created like any other buffer except that the buffer description's StructureBufferStride value is set to the size of the structured buffer
+	  and the D3D11_RESOURCE_MISC_BUFFER_STRUCTURED flag is specified as the MiscFlags value
+	  
+	- Depending on whether read only or read/write access is required, the structured buffer can be bound to the shader as either a shader resource view or as an unordered access view
+	
+	- A DXGI_FORMAT is not specified when defining a structured buffer as it will contain a user defined type and may not correspond to one of the DXGI_FORMAT types
+	
+	- Typed buffers, on the other hand, use the DXGI_FORMAT type and when defining them, the D3D11_RESOURCE_MISC_BUFFER_STRUCTURED flag is not specified
+	
+Copying compute shader results to memory
+	- Unordered access views are stored in GPU memory, so they need to be mapped to system memory if they need to be accessed by the CPU
+	
+	- This can be accomplished by creating a structured buffer of the required type which is defined with the usage flag D3D11_USAGE_STAGING and the CPU access flag D3D11_CPU_ACCESS_READ
+	
+	- Copying the compute shader's results to system rendering can be a bottleneck for rendering but no so much for GPGPU as the frequency with which the compute shader is given work is much lesser
+	
+Thread ID system values
+	- A group ID identifies the specific thread group that a thread belongs to among all the thread groups dispatched by a Dispatch call
+		- If GX x GY x GZ groups are dispatched, the group IDs will range from (0,0,0) to (GX-1,GY-1,GZ-1)
+		
+	= A group thread ID identifies a thread within its thread group
+		- If X x Y x Z threads are within a group, the group thread IDs range from (0,0,0) to (X-1,Y-1,Z-1)
+		
+	- A dispatch ID identifies a thread amongst all the threads dispatched by a Dispatch call
+		- dispatchID.xyz = groupID.xyz x threadGroupSize.xyz + groupThreadID.xyz
+		
+Append and Consume buffers
+	- Append and consume buffers are special types of structured buffers which are useful when the order in which elements are accessed from input and written to output does not matter (eg. particle systems)
+	
+	- The Append method is used to write an element to an append buffer and the Consume method is used to access an element from a consume buffer
+	
+	- Once a data element has been consumed by a thread, it cannot be consumed by another thread
+	
+	- When the UAV (Unordered Access View) is being defined, the description's Buffer.Flags has to be set to D3D11_BUFFER_UAV_FLAG_APPEND
+	
+Shared memory and synchronization
+	- Thread groups have their own shared memory which is shared amongst the group's threads known as thread local storage
+		- It can be accessed much faster than system memory and the access speed is supposedly comparable to a hardware cache access
+		
+	- The max size of the thread local storage is 32 kb and is accessed by a thread's groupID
+	
+	- Care must be taken to avoid using more shared memory than is available on a given multiprocessor to avoid performance issues
+		- Assuming a multiprocessor has 32 kb of shared memory and the compute shader requires 20 kb of shared memory
+		
+		- Having more than one thread group assigned to that multiprocessor would cause performance issues as the memory requirements
+		  would over-encumber the multiprocessor (the multiprocessor cannot do context switches between thread groups to hide latency)
+		  
+		- It makes sense to allocate at most half the maximum allowable shared memory per thread group so that atleast two thread groups
+		  may be assigned per multiprocessor
+		  
+	- One of the uses of thread local storage is storing texture information that the compute shader accessed repeatedly to perform effects such as blurring
+		- Storing texels in shared memory allows the compute shader to access it much faster than it normally would using the regular Sample method
+		 
+	- Synchronization must be performed to ensure that the work performed by all threads in a thread group is completed before proceeding
+		- This is important because subsequent shared memory accesses by neighbouring threads might fail if the threads responsible for initializing
+		  the shared memory did not complete their work before the neighbouring threads tried to access it
+		
+		- Synchronization can be performed by using the GroupMemoryBarrierWithGroupSync() method
+		
+Execution model
+	- Each thread is executed on a single scalar processor (multiple scalar processors comprise a multiprocessor)
+	
+	- Each thread group is executed on a single multiprocessor
+	
+	- Each compute shader kernel (grid of thread groups) is executed on a single device (multiple multiprocessors)
+	
+Performance considerations
+	- Occupancy is a measure of how effectively a multiprocessor is being used

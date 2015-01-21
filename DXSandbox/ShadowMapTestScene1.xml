@@ -1,0 +1,108 @@
+<!-- Scene description ile or the DXSandbox app -->
+<Scene name="ShadowMapTest">
+	<TextureRoot>N:\DirectXLearning\textures\</TextureRoot>
+	<ShaderRoot>N:\DirectXLearning\shaders\compiled\</ShaderRoot>
+	<Camera Position="0.0 -200.0 -200.0"
+			LookAt="0.0 -200.0 0.0"
+			Up="0.0 1.0 0.0"
+			FieldOfView="45"
+			NearPlaneDist="1.0"
+			FarPlaneDist="10000.0"
+			MotionFactor="100.0"
+			RotationFactor="1.0"
+			/>
+	<Lights>
+		<!--<ParallelLight 	Direction="0.5 -0.5 0.5"
+						Ambient="0.4 0.4 0.4 1.0"
+						Diffuse="1.0 1.0 1.0 1.0"
+						Specular="1.0 1.0 1.0 1.0"
+						/>-->
+						
+		<!-- Left wall -->
+		<!--<PointLight Position="-225.0 0.0 0.0"
+					Ambient="0.4 0.4 0.4 1.0"
+					Diffuse="1.0 0.0 0.0 1.0"
+					Specular="1.0 0.0 0.0 1.0"
+					Attenuation="4.0 0.0 0.0"
+					Range="5000.0"
+					/>-->
+		
+		<!-- Front wall -->
+		<!--<PointLight Position="0.0 0.0 225.0"
+					Ambient="0.4 0.4 0.4 1.0"
+					Diffuse="0.0 0.0 1.0 1.0"
+					Specular="0.0 0.0 1.0 1.0"
+					Attenuation="4.0 0.0 0.0"
+					Range="5000.0"
+					/>-->
+
+		<!-- Right wall -->
+		<!--<PointLight Position="225.0 0.0 0.0"
+					Ambient="0.4 0.4 0.4 1.0"
+					Diffuse="0.0 1.0 0.0 1.0"
+					Specular="0.0 1.0 0.0 1.0"
+					Attenuation="4.0 0.0 0.0"
+					Range="5000.0"
+					/>-->
+
+		<!-- Back wall -->
+		<!--<PointLight Position="0.0 0.0 -225.0"
+					Ambient="0.4 0.4 0.4 1.0"
+					Diffuse="1.0 1.0 1.0 1.0"
+					Specular="1.0 1.0 1.0 1.0"
+					Attenuation="4.0 0.0 0.0"
+					Range="5000.0"
+					/>-->
+					
+		<!-- Ceiling -->
+		<!--<PointLight Position="0.0 200.0 0.0"
+					Ambient="0.4 0.4 0.4 1.0"
+					Diffuse="1.0 1.0 1.0 1.0"
+					Specular="1.0 1.0 1.0 1.0"
+					Attenuation="2.0 0.0 0.0"
+					Range="5000.0"
+					/>-->
+
+		<!-- back wall-->
+		<SpotLight 	Position="0.0 0.0 -150.0"
+					Ambient="0.1 0.1 0.1 1.0"
+					Diffuse="1.0 1.0 1.0 1.0"
+					Specular="1.0 1.0 1.0 1.0"
+					Attenuation="1.0 0.0 0.0"
+					Range="1000.0"
+					Power="64.0"
+					/>
+					
+		<!-- left wall -->
+		<SpotLight 	Position="-150.0 0.0 0.0"
+					Ambient="0.1 0.1 0.1 1.0"
+					Diffuse="1.0 1.0 1.0 1.0"
+					Specular="1.0 1.0 1.0 1.0"
+					Attenuation="1.0 0.0 0.0"
+					Range="1000.0"
+					Power="64.0"
+					/>
+					
+		<!-- front wall-->
+		<SpotLight 	Position="0.0 0.0 150.0"
+					Ambient="0.1 0.1 0.1 1.0"
+					Diffuse="1.0 1.0 1.0 1.0"
+					Specular="1.0 1.0 1.0 1.0"
+					Attenuation="1.0 0.0 0.0"
+					Range="1000.0"
+					Power="64.0"
+					/>
+					
+		<!-- right wall -->
+		<SpotLight 	Position="150.0 0.0 0.0"
+					Ambient="0.1 0.1 0.1 1.0"
+					Diffuse="1.0 1.0 1.0 1.0"
+					Specular="1.0 1.0 1.0 1.0"
+					Attenuation="1.0 0.0 0.0"
+					Range="1000.0"
+					Power="64.0"
+					/>					
+					
+					
+	</Lights>
+</Scene>

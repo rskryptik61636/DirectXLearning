@@ -1,0 +1,9 @@
+Upcoming graphics tech
+
+- Temporal antialiasing
+
+- Pixel synchronization (Microsoft)
+
+- Order Independent Transparency
+
+- Conservative rasterization

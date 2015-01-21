@@ -1,0 +1,108 @@
+D3DX to DirectX Toolkit migration
+
+- Background
+	- D3DX has been deprecated as of Win 8.1 and D3D being absorbed into the Windows SDK
+	- Need to port existing DX Learning framework to use the DXTK instead
+	
+- Implementation
+	- Build DXTK
+		- DXTK has a bunch of separate solutions, the one we're interested in is Desktop_2013
+		- Built without hassle, libs are located under $(SolutionDir)\lib\Desktop_2013\$(Platform)\$(Configuration)
+		
+	- List all that needs to be ported in the DXLearning framework and their DXTK equivalents
+		- D3DX10INLINE = inline (DXTK seems to use it that way)
+		- D3DXCOLOR = Vector4 (DXTK\SimpleMath.h)
+		- ID3DX10Font = SpriteFont, SpriteBatch (DXTK\Sprite(Batch/Font).h)
+		- D3DXVECTOR(2/3/4) = Vector(2/3/4) (DXTK\SimpleMath.h)
+		- D3DXVec3Normalize = Vector3::Normalize() (DXTK\SimpleMath.h)
+		- D3DXMatrix = Matrix (DXTK\SimpleMath.h)
+		- D3DXMatrixIdentity = Matrix::Identity() (DXTK\SimpleMath.h)
+		- D3DXMatrixPerspectiveFovLH = XMMatrixPerspectiveFovLH (DirectXMath.h)
+		- D3DXMatrixLookAtLH = XMMatrixLookAtLH (DirectXMath.h)
+		- D3DX10CreateEffectFromFile = Might need Effects11 library or probably just the D3DCompile API (TODO: need to look into this further)
+			- D3DX11CompileEffectFromFile (which belongs to the Effects11 library seems to be the solution) (d3dx11effect.h)
+		- D3DX10CreateFontIndirect = see ID3DX10Font
+		- D3DXMatrixLookAtLH = XMMatrixLookAtLH (DirectXMath.h)
+		- D3DX10CreateShaderResourceViewFromFile = CreateXXXTextureFromFile
+		- D3DXVec3Cross = Vector3::Cross() (DXTK\SimpleMath.h)
+		- D3DXVec3Dot = Vector3::Dot() (DXTK\SimpleMath.h)
+		- D3DXMatrixRotationAxis = XMMatrixRotationAxis (DirectXMath.h)
+		- D3DXVec3TransformCoord = XMVector3TransformCoord (DirectXMath.h)
+		- D3DXMatrixScaling = XMMatrixScaling (DirectXMath.h)
+		- D3DXMatrixTranslation = XMMatrixTranslation (DirectXMath.h)
+	
+		- The following exist in the Effects11 library (d3dx11effect.h)
+			- ID3D10EffectTechnique = ID3DX11EffectTechnique
+			- ID3D10EffectMatrixVariable = ID3DX11EffectMatrixVariable
+			- ID3D10EffectVariable = ID3DX11EffectVariable
+			- ID3D10EffectShaderResourceVariable = ID3DX11EffectShaderResourceVariable
+			- ID3D10EffectScalarVariable = ID3DX11EffectScalarVariable
+			- ID3D10Effect = ID3DX11Effect
+		- D3D10_SHADER_* = doesn't change
+		- ID3D10Blob = ID3DBlob	
+		
+	- Build Effects11
+		- Lib dir location similar to that of DXTK: $(SolutionDir)\lib\Desktop_2013\$(Platform)\$(Configuration)
+		- New configuration called 'Profile' is present, not really sure what this is for
+			- The 'Profile' configuration has the preprocessor symbol PROFILE in addition to NDEBUG defined
+			- Can have an #if defined(PROFILE) in the appropriate linker block
+		
+	- Link to DXTK and Effects11
+		- Need to create a property sheet for DXTK
+		- Rather, need to set an environment variable called DXTK_ROOT and add it to the DXLearning property sheet
+		- Need to #pragma against DirectXTK(d).lib in d3dApp.cpp instead of against d3dx10(d).lib
+		- Need to #pragma against Effects11(d/p).lib in d3dApp.cpp
+			- Link against Effects11p.lib if both NDEBUG and PROFILE are defined
+		- Grah! Needed to link against WinDDK to get atlbase.h but its creating issues by causing the project to link against the wrong version of dxguid.lib
+		- Removing reference to WinDDK seems to have done the trick
+		- Effects11 requires to link against 'd3dcompiler.lib'
+	
+	- Make the changes and commit
+		- Consider typedefing namespace DirectX::SimpleMath to Math or something to simplify its usage
+		- Might need to move simultaneously to D3D11 given the way it looks right now
+		- Instead of replacing all D3DXMATRIX and D3DXVECTOR(2/3/4) with the SimpleMath equivalents, it might be better to make use of the DirectXMath types which are more compatible
+			- Source: http://msdn.microsoft.com/en-us/library/windows/desktop/ff729728%28v=vs.85%29.aspx
+		- Looks good for the most part but the fog shader isn't compiling, complaining about it being obsolete
+			- Need to implement ID3DInclude to facilitate being able to include other .fx files
+			- Somebody was nice enough to do this for us: http://nikvoss.com/?p=62
+		- IT'S ALIVE!!!!!!!!!!!
+		- Looks good (meaning it compiled and ran!) Finish porting the rest of the projects and check in.
+		- All apps (except for Fog which extends GenericApp) doesn't link against DXEngine; need to fix this
+		- Need to make an include header which links against DXEngine(d).lib and add it to d3dUtil.h so that any app that uses d3dUtil.h automatically links against DXEngine(d).lib if required
+		- Unable to load .bmp textures as we're only using CreateDDSTextureFromFile right now
+			- Need to use CreateWICTextureFromFile
+		- Old versions of PeaksAndValleys.cpp and Waves.cpp need to be removed (only the versions under /src/ should be retained)
+		- The texture on the crate in Clip_Pixel never used to show up, time to solve this mystery
+			- Tried swapping textures and texture matrices but nothing seems to help, drawing only the box now to try and isolate the problem
+			- Textured_Crate uses tex.fx with the TexturedBox, try it out and see what happens
+		- VS2013's inbuilt graphics debugging tools (which are awesome!) reveal the following:
+			- The last row of the world matrix is NaNs in the vertex shader
+			- The homogenous clip space position in coming in as all NaNs in the pixel shader
+			- The above look to be optimizations but, another thing is that the texture coordinates and normals on all the vertices are coming out as 0
+		- Try the next captured frame and see if the same behaviour is observed
+			- A frame from the working Textured_Crate demo shows the normals and texture coordinates coming out correctly
+		- A bug in the ObjectV2 class causes the vertices' positions to be scaled twice, could that be the one causing the issue?
+		- Change the scale factor to 1 for the crate in Clip_Pixel and see what happens
+			- Doesn't help, although now the bug that was in TextureBox has now been fixed
+		- The difference between the two implementations seems to be the vertex description used
+			- Textured_Crate uses the complex vertex description
+			- Clip_Pixel uses the texture vertex description
+			- The texture vertex description should be the right one but that doesn't seem to be the case
+			- No it isn't! The complex vertex description is the right one!
+			- TextureBox's template param is Vertex which uses the complex vertex description (#facepalm)
+			- Setting the primary vertex type in the app is clearly not the way to go, should have it be determined from the scene object itself
+			- Issue is that TextureBox extends Vertex while TexturedPeaksAndValleysV1 and TexturedWavesV1 extend TextureVertex
+			- Makes sense for TextureBox to extend TextureVertex to stay consistent with the others
+			- Textured_Crate will have to change its vertex description
+			- SUCCESS!!!!!!!!!!
+			
+	- Effects framework removal
+		- Survey says that the Effects framework is bound to be deprecated and it makes sense to adapt to the new style of compiling shaders at build time
+		  and interacting with them via the ID3D11(Vertex/Hull/Domain/Geometry/Pixel/Compute)Shader interfaces
+		  
+		- Instead of breaking the existing GenericApp class which sits on top of D3DApp and serves as the foundation for the demos so far, it might make sense
+		  to create another version which utilizes the new form of shader compilation and utilization
+		
+		- Analyze GenericApp and see what needs to change (refer DXApp_design.txt)
+		
+		- Just realized something, the eye position was being stored as a member variable with the previous camera impl and that non-updating value is still being passed into the tutorial shaders! (yeesh!)

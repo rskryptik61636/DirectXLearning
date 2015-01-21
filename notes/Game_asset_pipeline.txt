@@ -1,0 +1,175 @@
+Game asset pipeline
+
+Overview
+	- Game asset pipeline involves all the components that takes assets and integrates them into the game
+	
+	- Assets consist of anything that is created external to the pipeline and not code (models, sound effects, textures, materials, etc.)
+
+	- The architecture of the pipeline is critical to success as a good design can lead to quick turnaround and better results and a bad design can lead to frustration and possibly legal issues if it gets bad enough
+
+	- Questions to be answered
+		- What aspects should be considered when developing a game asset pipeline? 
+		- How does the game asset pipeline influence the game design and development process? 
+		- How are the parts of the game asset pipeline related to each other and how do they relate to the rest of the game design and development process? 
+		
+Pipeline components (answer to question 1)
+	- Assets can seldom be loaded directly into the game, they need to undergo some form of processing before that can happen
+
+	- This processing takes up most of the time in the pipeline
+
+	- Content management is also crucial as it is important that assets and code are under source control and that conflicts are avoided
+
+	- The major components of the pipeline include
+		- Content creation
+			- Authoring tools are part of the pipeline but chosen by the asset creators generally, no option but to deal
+			- Luckily, most authoring tools allow for plugins or exporters or something similar to allow assets to be exported to a format that the pipeline can deal with
+
+		- Exporting
+			- As previously mentioned, an exporter or plugin can be used/written to allow an asset to be converted to a format that the pipeline (and consequently, the game) can deal with
+			- This is important because most often the authoring tools store assets in complex formats containing a lot of informations, whereas the game is looking for something that can be loaded quickly and has minimal complexity
+			- It is the exporter's job to transform the asset from the authoring tool's format to the game's format
+			- The exporter can have the option to save the asset in the tool's format for further tweaking, or to export it to the game's format
+			- Most often, authoring tool formats are so complex that assets can mostly be viewed in the tools themselves
+			
+		- Validation
+			- Many times, games place constraints on assets (a texture's size has be to 2^n or filenames cannot have spaces in them)
+			- These validation checks can be placed at appropriate places in the pipeline
+			
+		- Precomputations
+			- Some functions (like lighting, for example) can be done at runtime but impose a performance penalty and might cause the gamer to wait
+			- Lighting can often be precomputed and stored so that it can be directly accessed and rendered during runtime
+			- This needs to be done judiciously though as it may not be feasible if it adds substantial overhead to the pipeline processing
+			
+		- Optimizations
+			- Not only framerate increase, but also asset compression for faster loading and minimum storage consumption
+			- Pipeline can perform these tasks automatically based on the requirements
+			
+		- Previewing
+			- It is important to implement a preview functionality so that asset developers can see how their assets look and feel in the game
+			- Facilitates quick turnaround
+			- May be useful to add facilities to closely inspect assets
+			
+		- Fast path
+			- Simplified version of the pipeline to quickly view outcomes which is achieved by not performing certain tasks or doing them less well
+			- Important that asset developers are made aware of which version of the pipeline they're using as the absence of that knowledge can lead to unnecessary (and most of the time, expensive) churn
+			
+		- Source control
+			- The benefit is obvious and quite necessary
+			- Triggers can be setup so that concerned personnel are informed whenever a change is made to a particular asset
+			- Scheduled backups would also be a convenient feature
+			
+		- Metadata
+			- Additional data stored with each asset (and its corresponding files) that allows the asset developer to uniquely identify it
+			- Possible criteria include:
+				- Target platform
+				- Transparency
+				- Model or not
+			- Issue is that metadata needs to be maintained as obsolete metadata can cause mishaps
+			- Might be worthwhile to force the developer to update metadata upon every commit
+			- Somewhat akin to branches
+			
+		- Pipeline maintenance
+			- Should be flexible enough to accommodate rapid and often times, widespread changes (don't we know a thing or two about this!)
+			- Requirements can change quickly and many times, with little consideration for current design
+			- It is very important that the system be as flexible as possible to account for said change and not have to tear the whole system apart
+			
+		- Other considerations
+			- Bandwidth: ability for the content management system to handle multiple users simultaneously
+			- Catalogue files: used to organize many smaller files so that they can be read at once to avoid overhead
+			- Encryption: if security considerations have to be met
+			- Deliverables: might need to release checkpoint deliverables every so often to publishers as progress indicators (this is where branches come in handy to keep track of things)
+			
+Design and development considerations
+	- The amount of time and effort spent on developing the pipeline impacts the quality of the final product
+	
+	- Project management and proper planning become important as budget and time constraints increase
+	
+	- Software development models
+		- The waterfall model
+			- One shot process wherein the output of one component is the input to the next component and cycles only exist between successive components
+			- The pipeline is not very important here as there is hardly any review of rework in this methodology
+			- This approach is rarely practical as in the real world, there is constant change of requirements and design
+		
+		- Agile development
+			- Unlike the waterfall model, agile development tries to account for constant change in requirements and design
+			- Traditional software development methodologies seek to minimize change as much as possible to keep the pipeline robust
+			- Nowadays though, stiff competition prompts ever changing business requirements which reflects onto the pipeline
+			- Instead of planning everything at the beginning of a project, a component is planned just before development begins on it
+			- The component is built, tested and changes are made to the overall design and/or plan depending on the outcome of that component
+			- The result is a constant cycle of planning, development and testing until the product is finished
+			- Documentation often gets left behind as a result of the constant change in the infrastructure of the system
+			- Automated testing is important as that helps identify components that get broken by new changes
+			- A quick pipeline also helps when an asset developer wants to quickly integrate their asset into the game to see how it turns out
+			- SCRUM is a popular agile development methodology
+				- Teams are organized to work on a component for a period of 30 days
+				- Once the component is done with, the teams are reorganized to work on different components
+				- The teams need to be within close proximity of each other during the 30 day period			
+				- Branching capabilities of the content management system allow teams to work on the same codebase independent of each other
+				- Once projects have stabilized, changes made on all the different branches can be merged and promoted to the master branch
+		
+		- Prototyping
+			- Involves creating small test versions of a particular functionality to see if it is feasible for full-scale development
+			- Done before a project begins to see if it is worthwhile in the first place
+			- Usually done on a simplified version of the asset (like, shading a box for example) which also makes it easier to debug
+			- Usually disposed off once the experiment is done and more focus is placed on the lessons learned rather than the actual prototype itself
+			
+	- Team leads
+		- Allows team leads a way to track the progress of their team members via triggers
+		- The content management system serves as a good project management tool in that way
+		
+	- Teamwork
+		- Merges and exclusive check outs help keep files in sync (more applicable to text files though)
+		- Changes, once committed, can be propagated to the rest of the team upon the next get
+		
+	- Quality of work
+		- As previously mentioned, assets might look quite different in the game than they do in the authoring tool so a fast and efficient pipeline allows the asset developers to preview their work quickly
+		- A slow pipeline might discourage asset developers from exporting their changes and lead to errors being discovered very late in the process
+		
+	- Quality of life
+		- Boring tasks being automated in the pipeline allows developers to focus on implementing functionality
+		- Automation also reduces chances of errors being introduced if developers had to perform those tasks manually
+		- Keeps developers from jumping ship :)
+		
+- Pipeline scheme
+	- Overview
+		- Asset developers generally only use the pipeline and input assets into it
+		- Programmers are the ones who develop and maintain the pipeline as well as write the game code
+		- Programmers also control the content management system which serves as source control primarily and allows changes in the pipeline to be propagated to all of its users instantaneously
+		
+	- The content management system
+		- Stores the following
+			- Assets
+			- Exported assets
+			- Code
+			- Game itself
+			- Asset pipeline
+			
+		- Asset developers commit assets to it and also retrieve assets from it to make futher changes
+		
+		- Programmers commit changes to the pipeline and game code and also retrieve the same when changes need to be made
+		
+		- Source control is the most important function of the content management system
+		
+		- It also makes builds whenever necessary to distribute to testers (who are often remote) or to producers or clients as checkpoint distribs
+		
+	- Pipeline processing
+		- As previously mentioned, the stages are:
+			- Exporting the assets from their respective authoring tools to the game format
+			
+			- Validation of the assets to ensure that errors are found
+			
+			- Precomputation like lighting in a scene or path traversal of enemies in a level
+			
+			- Optimization like dividing a scene into separate renderable meshes and only rendering the ones that are visible
+			
+	- As we've seen in the real world, it makes sense to completely rework a badly designed system rather than stick with it as it just ends up costing up more further down the line
+	
+- Case study: lessons learned
+	- Exporter
+		- Only options that are fully supported should be exposed and asset developers should be informed as to what constraints they have to work with
+		- For instance, asset development tools might allow for a lot more data to be exported than the exporter can currently handle
+		
+	- Pipeline speed
+		- Again, a slow pipeline hinders productivity and causes asset developers to lose focus (an idle mind is you know what...)
+		
+	- 

@@ -1,0 +1,267 @@
+Shadow mapping
+
+Overview
+	- Basic idea involves rendering two passes
+	
+	- In the first pass, a depth map is generated from the viewpoint of the light
+		- This is achieved by creating a virtual camera at the light's position and using it's view and projection matrices,
+		  rendering the scene's depth map to a depth-stencil buffer. This depth map is called a shadow map.
+		  
+	- In the second pass, the shadow map is projected as a texture from the light source onto the scene.
+		
+	- The type of projection varies based on the light source.
+		- Spot light = perspective projection
+		
+		- Parallel light = orthographic projection
+		
+		- Point light = cube map (needs some elaboration)
+		
+	- The depth (z) value of the projected point wrt the light source in the scene is compared against that of its position (x,y) in the shadow map
+		- If the shadow map depth value is lesser than the scene point's depth value, the scene point is considered to be in shadow
+		
+		- The scene's projected point will be in homogeneous clip space (NDC)
+		
+		- If it is a perspective projection, a divide by w will be required (perspective divide) to account for the foreshortening introduced by the perspective transformation
+		
+		- If it is an orthographic projection, the perspective divide will not be required as there is no foreshortening introduced by an orthographic projection
+		
+Biasing and sampling
+	- Since the shadow map is of a fixed resolution, a single texel on the shadow map can correspond to an area in the scene which consists of more than one pixel
+	
+	- The fallout of this is that two points in the scene with different actual depth values which end up mapping to the same texel in the shadow map,
+	  will be shaded differently resulting in a stairstepping effect known as shadow acne
+	  
+	- This type of artifact can be avoided by applying a heuristically determined constant bias
+	
+	- However, the constant bias may not work well for primitives with large slopes which can cause an effect called 'peter panning' wherein the shadow seems to get detached from the object
+	
+	- In such cases, the rasterizer state can be configured with a slope scaled depth bias value which specifies how much to bias based on the primitive slope
+	
+PCF filtering
+	- The basic shadow mapping implementation suffers from aliasing issues
+	
+	- One of the solutions is to perform Percentage Closed Filtering (PCF) which is basically a bilinear interpolation of the depth test results of sampled texels within a given kernel
+	
+	- Given a texture coordinate (u,v), the samples are taken at (u+dx,v), (u,v+dx) and (u+dx,v+dx) where dx = 1/shadow_map_size (shadow_map_size = 512/1024/2048)
+		- Assuming that point filtering is being applied by the sampler state, let s0, s1, s2 and s3 be the sample texels chosen
+		
+	- The results of the depth comparison tests at s0, s1, s2 and s3 undergo bilinear interpolation and the result defines the depth value at (u,v)
+	
+	- This basically results in an anti-aliased shadow map
+	
+	- The larger the kernel, the better the potential anti-aliasing is but the downside is that if the kernel gets too large, shadow acne can occur
+		- Potential solutions are discussed later
+		
+	- Texture2D::SampleCmpLevelZero automatically performs PCF with a 4x4 pattern which is called as many times as necessary depending on the kernel size used
+		- For example, in a 3x3 kernel, the PCF function is called 9 times
+	
+	- A potential optimization is that PCF can only be performed at shadow edges but the cost of the resulting dynamic branching needs to be leveraged
+	  with the scene requirements to see if it is worth the trouble
+	  
+	 - The computed shadow factor impacts the diffuse and specular lighting components of the computed pixel colour
+	 
+Implementation
+	- First pass
+		- Need to transform the input point by the light's world view projection matrix
+			- view projection matrix is determined by the DXCamera instance inited to the light's position and orientation
+			- world matrix belongs to each object
+		
+		- The final depth value needs to be output to the depth stencil view
+			- Infact, no pixel shader is required to build the shadow map as nothing will be rendered
+			
+		- A separate effect can be used to debug the texture
+			- Vertex shader does the usual wvp and texture transform
+			
+			- Pixel shader samples only the red channel of the bound texture and displays it
+			
+		- The ShadowMap class in the example code can be reworked to work with our version of d3dUtil.h
+		
+	- Need to compile shader byte code into different directories based on the platform and configuration
+		- A helper function in DXEffect should do the trick
+	
+	- Might want to consider extending effect classes to include different effects as we come up with them
+		- Or, just add functions to the existing classes
+		
+	- Try generating the shadow map for a single spotlight
+		- The camera params can be:
+			- fov: 45 degrees (spotPow = 8)
+			- aspectRatio: 4/3 (for now, fine tune when get a better idea of things)
+			- near: 1.0
+			- far: spotlight range
+			
+	- Create a ShadowMappingEffect class which only does the first pass
+		- Consider creating an enum to specify the available passes (defaults to the first pass)
+		
+		- The set* functions can switch internally based on which is the current pass in effect
+		
+	- Create a DebugTextureEffect class to display the shadow map in a quad
+		- The vertex shader converts the point from local space to homogeneous clip space and the texture coordinate from local space to texture space
+		
+		- The pixel shader just returns the colour of the sampled texture
+			- An enum can be used to specify which channels need to be displayed (for our purpose, we only need the red channel)
+			
+		- Test the DebugTexture shader on the floor texture
+			- Wasn't rendering initially, mixed up the order of the copy statement in the quad's initIndexBuffer() method again (#facepalm!)
+			
+			- The texture coordinates aren't being mapped correctly for some reason
+				- Mystery solved, the vertex shader input struct layout did not match with the input layout (#double facepalm!)
+				
+				- Did not realize that actually, makes sense though
+		
+	- Should make it a point to initialize shader constant buffer params to default values so that it doesn't blow up
+		- On second thought, it might be worthwhile to leave it the way it is as debugging becomes easier
+
+	- Have a single point light on top and a spot light off to the side whose shadow map will be determined
+		- Now that I think about it, wouldn't the scene have to be drawn once before in order for the depth map to be generated?
+		
+		- Indeed we do! Simplest way is probably to override the drawScene() method and invoke drawObjects() twice; once to render in the shadow map and once again for the actual scene
+			- Not exactly, the shadow map first pass needs to be applied instead of the actual effects
+			
+			- Infact, we should add a 'name' attribute to the root 'Scene' node of the scene description file which can be used in the sandbox app to switch between different scene setups
+			
+			- Update DXApp::initApp() to store the scene's name
+			
+			- Override drawScene and add code to render a difference scene based on the scene name
+				- Add a D3D11_VIEWPORT as a member of d3dApp which is used as the default viewport
+		
+		- The view projection matrix needs to be set to that of the spot light
+		
+		- The debug texture is coming out as all white, try different channels and see if that changes
+			- It looks like its not changing from the default clear colour, it seems a rasterizer state with the depth bias settings needed to be added
+			
+			- Add the required depth states to RenderStateMaker and use them in the scene
+			
+			- One place where we goofed
+				- The shadow map size is not (clientwidth, clientheight); it's 512/1024/2048 (ugh!)
+				
+			- Didn't help, try adding a dummy pixel shader to see what happens
+			
+			- Change the clear colour of the depth buffer in the ShadowMap class and see if it is actually being cleared
+				- It is the clear colour, either nothing's being written to it or it is being cleared somewhere along the line
+				
+			- Probably worth binding the default render target to the build shadow map shader to see what's going on
+				- Might need to revise the vertex shader's input struct to match the input layout
+				
+			- All sources seem to indicate that the depth buffer is still somehow being bound as a shader resource, problem is, where is this happening?
+				- It happens as soon as the ShadowMap class' depth stencil view is bound to the OM stage
+				
+				- Disabling the call to the drawShadowMap() method and enabling the block wherein the scene objects are drawn to build the shadow map eliminates the warning,
+				  it looks like the debug texture effect is not releasing the depth buffer texture upon exit which is causing the subsequent write to lock up
+				  
+				- Validate the above claim by reinstating the drawShadowMap() call and rendering the brick wall texture instead of the depth buffer texture
+					- Such is the case
+					
+				- The DebugTextureEffect class needs to provide a method to release the debug texture bound to the pixel shader => didn't help
+				
+				- Try calling ShadowMap::BindDsvAndSetNullRenderTarget() inside drawShadowMap() to try and pinpoint where the shader resource issue lies
+				
+				- Unable to get the depth map buffer unbound from the pipeline for some reason, the warning still persists
+				
+				- SUCCESS!!!! Needed to unbind the pixel shader resources by passing a pointer to a single element array of NULL
+				
+			- Set the light view projection matrix to be the same as the camera and see if it changes as we move around the scene
+				- No dice, but something else is amiss...
+				
+				- Well, whaddya know! It looks like there's no depth stencil state set in the drawing loop!
+				
+				- Seems kind of strange but lets try a quick experiment, swap the order of the draw commands and draw the room after the box
+				
+				- Didn't make a difference, quick thing to try, forget the shadow map render technique and try rendering using the regular normal mapping technique and see what happens
+				
+			- Let's try something else for a change
+				- Modify the shadow map generation dummy pixel shader to return z/w and lets not disable colour writes to see what we get
+				
+				- The depth is showing up now but the depth rasterizer state definitely makes a difference
+				
+				- Lowering the depth bias and rendering from the perspective of the light seems to show something on the box atleast
+				
+				- Try going back to the original scene now
+				
+				- PARTIAL SUCCESS!!!! Stepping the depth bias up to 10000 produced an output once the camera got very close to the box!!!!
+					- Lets see what else we can do by playing with the values
+					
+					- Not very helpful...
+					
+				- Try changing the format of the shadow map depth buffer and its associated views to floating point to see what we can accomplish
+				
+				- Try disabling DepthClipEnable in the shadow map rasterizer state for kicks... no use...
+				
+				- Create a rasterizer state similar to that of the shadow map's for front-facing CCW winding
+				
+			- Quite a few articles were read on the depth buffer and one of the conclusions that has been drawn is that the disparate distribution of depth values
+			  which tends to more biased to the near plane can be a cause of concern
+				- http://mynameismjp.wordpress.com/2010/03/22/attack-of-the-depth-buffer/
+				- http://www.humus.name/index.php?page=News&ID=255
+				- http://www.sjbaker.org/steve/omniv/love_your_z_buffer.html
+				- http://outerra.blogspot.com/2012/11/maximizing-depth-buffer-range-and.html
+				
+			- One of the ways to combat this seems to be to bring the near and far planes closer together
+				- YET ANOTHER PARTIAL SUCCESS!!!! Near plane = 100; Far plane = 1000; seems to do a good job
+				
+		- The depth buffer seems to atleast show something now and it seems a shadow can be generated from it
+		
+		- The aspect ratio also being set to 1.0f didn't help, the cube looks like an actual cube with the aspect ratio set to client_width / client_height
+		
+		- Modify the CCW rasterizer state to also take in the depth bias values
+		
+	- Onwards to the second pass
+		- The actual shadow test is pretty simple, compare the z value in the light's clip space against the sampled depth map value
+		  and shade as ambient if the sampled depth map value < clip space z value
+		  
+		- Might be worthwhile to refactor the function which computes the bumped normal from the normal map into a helper function in lighthelper.fx
+		
+		- Slight confusion occurred with the naming of the setWVP function used in the first pass
+			- Unlike the normal mapping effect, in this case WVP = world matrix * light's view projection matrix
+			- Makes sense to be more explicit with the function names
+			
+		- Consider whether we actually require a texMtx and question the specular map being passed in since it seems to be blank
+		
+		- The setLights is pretty handy for setting multiple lights, setup with a single spot light for now and extend to multiple whenever
+		
+		- Finish up the shadow normal mapping class impl and updating the sandbox scene
+		
+		- Cleaning up the lighting implementation to use a common function to calculate the Phong-Blinn lighting
+		
+	- Renders but for some reason, the z value of the light's projected view space tangent point is ending up as 0.0
+		- z scale factor was 0.0 in the tangent matrix #haak-thu-nan-magne!
+		
+		- y scale factor was supposed to -0.5, I was right in the first place! #dammit!
+		
+		- Shouldn't just return ambient light colour, should multiply it with the ambient (in our case, diffuse) material colour
+		
+	- We have shadows!!! HOORAY!!! And also some back projection it seems :)
+		- Should make the ambient light darker, 0.4 gray is too bright...
+		
+		- So here's the issue, the depth value of the point on the back wall is within [0,1] since it is being computed from the perspective
+		  of the current frame being rendered.
+			- However, the shadow map is being computed from the perspective of the light source and as a result, the two don't match!
+			
+		- No, that's wrong. The depth value of the point on the back wall is supposed to have been the result of the light's frustum transformation.
+			- The issue is that there is no check to see if the current point lies behind the light source.
+			
+			- We could clip the current pixel if it is behind the light in world space but there's no easy way to determine that if the light is moving.
+			
+			- Now that I think about it, its kind of like the 3D pipeline's perspective projection except that there's no clipping going on
+			  which is why points even behind the light source are undergoing the shadow test.
+			  
+			- Implementing that sort of clipping at this point might take some thought and we really need to move on from this point.
+			
+	- Add various filtering techniques to see how the shadowing can be improved.
+		- Turned off the slope scaled depth bias (which is the default), it seems the peter panning effect it gone now...
+		
+		- Should update the RenderStateMaker methods to use the MSDN specified default values for depth bias
+			
+	- Update the shadow mapping implementation to work with multiple light sources
+		- The simplest solution seems to be use multiple ShadowMap class instances as each will correspond to a single light source.
+		
+	- Forgot to get the sampler state bind descriptions via reflection (thu!). So what was it doing for the bind point uptil now?
+		- Seems that the uninitialized bind description defaults to a bind point of 0, seems that we lucked out...
+		
+	- The taking initiative blog's example code doesn't do any shading if the texel values are out of range, wonder what happens if we do the same...
+		- Didn't seem to make much of a difference, probably better to leave as is since it seems to make logical sense not to shade anything
+		  outside of the view frustum.
+	  
+Links
+	- http://http.developer.nvidia.com/GPUGems/gpugems_ch11.html
+	- http://www.opengl-tutorial.org/intermediate-tutorials/tutorial-16-shadow-mapping/
+	- http://msdn.microsoft.com/en-us/library/windows/desktop/ee416324%28v=vs.85%29.aspx

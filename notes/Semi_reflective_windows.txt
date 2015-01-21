@@ -1,0 +1,53 @@
+Semi reflective windows
+
+- First task after a long hiatus, try to implement the semi-reflective window scenario which threw the game company interview for yours truly!!!
+
+- Rough outline
+	- First just render the wall and objects on the other side of the window.
+	
+	- Render the window first as just a transparent object to simulate a window without reflections.
+	
+	- Try to simulate the semi-reflective window effect by playing with the mirror concept using the stencil buffer.
+	
+- Lets get started shall we! First, let's exhume the learning framework...
+	- There's quite a bit of useful stuff and quite a bit of overly complicated stuff, lets see if we can sort through this mess and figure out how to make it simpler to use.
+	
+	- Might make sense to review some new C++ 11 functionality and design stuff before proceeding.
+	
+	- Can get lost in doing this learning process, might as well dive in and start learning about stuff as/when it becomes necessary...
+	
+	- As mentioned previously, there's quite a bit of stuff that can be re-used. We want a framework with a lot of loose functions that can be invoked in whatever order we need them 
+	  to begin with and the architecture can then be built up as we go along.
+	  
+	- Keep going around in circles, simple way to start off seems to be to break down the tiled deferred shading implementation so that we can get an idea of how to refactor the DXApp/D3DApp
+	  classes and all the other utils to make them easier to use.
+	  
+	- Getting nowhere fast, dump the refactoring for now. Just build an app with what we have and go from there...
+	
+- First steps
+	- Create a template .h/.cpp file which represents a child class of DXApp by ccping DXApp and defining all the pure virtual methods as well as inserting TODOs wherever necessary.
+	
+	- What shaders do we need?
+		- Basic phong shader should suffice.
+	
+	- Vertex layout?
+		- Whatever fits the wall and mirror room objects.
+	
+	- Resources/States?
+	
+	- Scene objects?
+		- Consider modifying the RoomV1 class a bit so that the vertex/index buffer info is exposed such that the pipeline stage binding and the drawing can be handled by the app.
+		
+		- The current method of having the aforementioned tasks happen inside the object class seems a bit restrictive and cumbersome.
+		
+		- Can return the following of each object:
+			- no. of vertices
+			
+			- vertices start index
+			
+		- Rather it might make sense to have methods which do the following:
+			- Bind the main vertex buffer.
+			
+			- Draw each object individually or in groups as necessary (wall, floor, room)
+			
+		- The SceneBuilder class can actually be expanded upon. It already has quite a bit of functionality implemented.

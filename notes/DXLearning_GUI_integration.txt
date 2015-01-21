@@ -1,0 +1,11 @@
+DXLearning GUI integration
+
+Overview
+	- To add a GUI component to the DXLearning framework to allow for ease of tweaking parameters.
+	
+Implementation
+	- Anttweakbar seems promising. It was recommended by a certain graphics programmer who used it in his own framework (see link below) and after wrestling with some antivirus issues which prevented the library from
+	  being downloaded, we're able to build the lib and see it in action.
+		- http://mynameismjp.wordpress.com/2013/09/16/sample-framework-updates/
+		
+	- The sample framework has helper functions which wrap anttweakbar functions and supposedly make it easier to use, should investigate this.

@@ -1,0 +1,45 @@
+PCF shadow mapping implementation
+
+- Implement a pixel shader that does PCF filtering and whose filter size can be set at runtime.
+	- Start off with a very basic 4x4 PCF that uses the point sampler. The shadow map size will have to be passed in as a parameter.
+	
+	- Once we're sure that works, the sampler can be swapped for a comparison based linear filter that can be used with the Texture2D::Sample method.
+	
+	- Keep in mind that we'd like to specify the shadow mapping technique (regular/PCF) as well as the tap size at runtime.
+		- Consider using enums to switch between the filtering modes as well as to specify the tap size.
+		
+		- Don't really need separate enums for the filtering mode and the tap size.
+		
+		- Can't (rather, shouldn't) reuse ShaderResource and ShaderSamplerState instances across shaders as the bind points may be different
+			- Can avoid runtime costs for sampler states by having the array of sampler states be a class member which is populated in the initSamplerStates() method
+			
+		- Definitely need to refactor mutator funcs into ones which accept shader param structs.
+			- Currently, every mutator function has to have an internal switch based on the current selected technique.
+			
+			- Come to think about it, even the set* methods are the same.
+			
+			- The separate switch statements within each set method are a real performance killer.
+	
+	- REVELATION!!!! The shadow factor that is computed by the PCF (the interpolated factor) is directly multiplied with the computed light colour
+	  and not used in the if condition to determine if the computed light colour should be used or not.
+		- This would explain the antialiasing that would occur at the edges of the shadow once PCF is applied.
+		
+	- The samplers were not being set for the PCF technique because they were not being inited, the simple technique's samplers had to be explicitly assigned to them (thu!)
+		- This won't be the case once we substitute the sampler used in the PCF technique for the comparison based one but still another reason to rethink the current
+		  design of initializing and setting params in the effect classes.
+		
+	- Need to update the shadow sampler based on the currently selected technique.
+		- Add the PCF comparison sampler technique to SampleStateMaker.
+		
+		- Need to replace the SamplerState for the shadow sampler in the PCF shader with a SamplerComparisonState in order to use the Texture2D::SampleCmpLevelZero method.
+		
+		- Was getting no output, realized that I had set the comparison state to the diffuse texture sampler by mistake (ai!)
+		
+		- Looks good though! Implement 16-tap PCF now... Awesome!!!
+		
+	- Extend to support 9 tap (3x3) and 25 tap (5x5) PCF
+		- Filter bounds need to be dynamically computed inside the shader.
+
+- Add mutator functions to ShadowNormalMappingEffect which can toggle the filtering and set the filter size. => done
+
+- Update DXSandboxApp accordingly. => done

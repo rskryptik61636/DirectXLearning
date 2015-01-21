@@ -1,0 +1,127 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="Source Files">
+      <UniqueIdentifier>{4FC737F1-C7A5-4376-A066-2A32D752A2FF}</UniqueIdentifier>
+      <Extensions>cpp;c;cc;cxx;def;odl;idl;hpj;bat;asm;asmx</Extensions>
+    </Filter>
+    <Filter Include="Header Files">
+      <UniqueIdentifier>{93995380-89BD-4b04-88EB-625FBE52EBFB}</UniqueIdentifier>
+      <Extensions>h;hh;hpp;hxx;hm;inl;inc;xsd</Extensions>
+    </Filter>
+    <Filter Include="Resource Files">
+      <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
+      <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\src\DXEffect.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\TexEffect.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\ColorEffect.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\include\NormalMappingEffect.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\ShadowMap.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\ShadowNormalMappingEffect.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\DebugTextureEffect.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\DeferredShadingEffect.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\ParticleSystemEffect.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\SkyboxEffect.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\include\DXEffect.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\TexEffect.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ColorEffect.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\NormalMappingEffect.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ShadowMap.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ShadowNormalMappingEffect.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\DebugTextureEffect.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\DeferredShadingEffect.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\StructuredBuffer.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\ParticleSystemEffect.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\SkyboxEffect.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="..\shaders\colorPS.hlsl" />
+    <FxCompile Include="..\shaders\colorVS.hlsl" />
+    <FxCompile Include="..\shaders\texPS.hlsl" />
+    <FxCompile Include="..\shaders\texVS.hlsl" />
+    <FxCompile Include="..\shaders\normalMappingVS.hlsl" />
+    <FxCompile Include="..\shaders\normalMappingPS.hlsl" />
+    <FxCompile Include="..\shaders\buildShadowMapVS.hlsl" />
+    <FxCompile Include="..\shaders\debugTextureVS.hlsl" />
+    <FxCompile Include="..\shaders\debugTexturePS1.hlsl" />
+    <FxCompile Include="..\shaders\buildShadowMapPS.hlsl" />
+    <FxCompile Include="..\shaders\renderShadowMapVS.hlsl" />
+    <FxCompile Include="..\shaders\renderShadowMapSimplePS.hlsl" />
+    <FxCompile Include="..\shaders\renderShadowMapPCFPS.hlsl" />
+    <FxCompile Include="..\shaders\deferredShadingVS.hlsl" />
+    <FxCompile Include="..\shaders\deferredShadingPS1.hlsl" />
+    <FxCompile Include="..\shaders\deferredTexPS.hlsl" />
+    <FxCompile Include="..\shaders\deferredShadingPS2.hlsl" />
+    <FxCompile Include="..\shaders\deferredMotionBlurPS.hlsl" />
+    <FxCompile Include="..\shaders\deferredShadowMapSimplePS.hlsl" />
+    <FxCompile Include="..\shaders\forwardParticleSystemVS.hlsl" />
+    <FxCompile Include="..\shaders\forwardParticleSystemBasicPS.hlsl" />
+    <FxCompile Include="..\shaders\particleSystemUpdateCS.hlsl" />
+    <FxCompile Include="..\shaders\particleSystemInsertCS.hlsl" />
+    <FxCompile Include="..\shaders\forwardParticleSystemRainGS.hlsl" />
+    <FxCompile Include="..\shaders\deferredParticleSystemBasicPS.hlsl" />
+    <FxCompile Include="..\shaders\skyboxVS.hlsl" />
+    <FxCompile Include="..\shaders\skyboxPS.hlsl" />
+    <FxCompile Include="..\shaders\tiledDeferredTexCS.hlsl" />
+    <FxCompile Include="..\shaders\tiledDeferredMotionBlurCS.hlsl" />
+    <FxCompile Include="..\shaders\tiledDeferredShadowMapSimpleCS.hlsl" />
+    <FxCompile Include="..\shaders\tiledDeferredShadowMapPCFCS.hlsl" />
+    <FxCompile Include="..\shaders\deferredMotionBlurFinalPS.hlsl" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\shaders\debugTextureCommon.hlsli" />
+    <None Include="..\shaders\renderShadowMapCommon.hlsli" />
+    <None Include="..\shaders\deferredShadingCommon.hlsli" />
+    <None Include="..\shaders\deferredShadingCommonPS.hlsli" />
+    <None Include="..\shaders\particleSystemCommon.hlsli" />
+    <None Include="..\shaders\skyboxCommon.hlsli" />
+    <None Include="..\shaders\tiledDeferredShadingCommon.hlsli" />
+  </ItemGroup>
+</Project>

@@ -1,0 +1,109 @@
+DXCamera
+
+Motivation
+	- Was able to implement a camera to work in OpenGL's right handed coord system fairly easily
+	- How difficult would it be to do the same for DirectX?
+	- Could start off with DirectX's inbuilt functions for lookAt and constructing the proj matrix
+	- Once, it's working, then do it by hand
+
+Design (same as OpenGLCamera)	
+	- Functions
+		- public
+			- param ctor(eye, lookAt, up, fov, aspectRatio, nearDist, farDist)
+				- updateViewMatrix(eye, lookAt, up)
+				- updateProjMatrix(fov, aspectRatio, nearDist, farDist)
+			- getViewMatrix
+			- getProjMatrix
+			- roll(angle)
+				- rotate u and v by angle
+			- pitch(angle)
+				- rotate n and v by angle
+			- yaw(angle)
+				- rotate u and n by angle
+			- slide(du, dv, dn)
+				- translate eye by (du, dv, dn)
+		- private
+			- updateViewMatrix(eye, lookAt, up)
+				- n = norm(lookAt - eye)
+				- u = norm(cross(up,n))
+				- v = norm(cross(n,u))
+				- update mView with u, v, n, d (-(u/v/n).eye)
+			- updateProjMatrix(fov, aspectRatio, nearDist, farDist)
+				- setup mProj as by computing left, right, bottom, top and using nearDist and farDist
+				- left, right, bottom and top can be computed as follows (ripped off from GLTools::GLFrustum)
+					top = nearDist * float(tan( fov/2 * M3D_PI / 180.0 ));
+					bottom = -top;
+					left = bottom * aspectRatio;
+					right = -left;							
+	- Members
+		- D3DXVECTOR3 eye, up
+		- D3DXVECTOR3 u, v, n
+		- D3DXMATRIX mView
+		- D3DXMATRIX mProj
+	- On second thought, updateViewMatrix doesn't need the viewing params to update the view matrix once u, v, and n have been set
+	- Makes more sense to have a separate function called setViewAxes which sets u, v and n
+	- Actually, once u, v and n have been initially defined using eye, lookAt and up; they are only going to be modified by the slide, roll, pitch, yaw funcs
+	- Don't really need a separate function to set the view axes
+	- The perspective projection is set in the reshape func, need to be able to set the projection params via mutator funcs
+	- The definition of the matrices in the D3DXMatrixLookAtLH and D3DXMatrixPerspectiveFovLH look peculiar
+	- The view matrix looks to be the transpose of the one used in OpenGL and the proj matrix looks to be an optimized version of the one used in OpenGL
+	- Use the definitions verbatim and see if the results come out the same
+	- For now, use the built in functions, once its working, break down the matrix and see if we get the same result with the OpenGL version
+	- Actually, since we're basing all the calculations off of the axes u, v and w, looks like we can't use D3DMatrixLookAtLH atleast
+	- Build the view matrix by hand, use D3DXMatrixPerspectiveFovLH for the projection matrix for now
+	- For building the projection matrix by hand, the first goof up encountered was trying to convert the fov to radians when it was already in radians (uhhh!)
+	- Fixing that little issue brought us closer but it looks like just transposing the OpenGL proj matrix won't work, we need to account for the inverted z
+	- Hold on, there's another function called D3DXMatrixPerspectiveLH which actually takes in the width and height of the near plane and its definition looks
+	  a lot closer to that of the OpenGL projection matrix
+	- So, if we compute left, right, top and bottom; can we just use this function instead?
+	- Scratch that, there's yet another function called D3DXMatrixPerspectiveOffCenterLH and its definition looks v. v. similar to the OpenGL projection
+	- The only difference is, pseudo-depth is computed differently
+	- Ya-tah!!!! It worked!!!!
+	- Now, its possible that its just the flipped z thats causing the different form of the projection matrix 
+	  but its worthwhile to work it out on pen and paper just to be sure
+	- It works out for left, right, top and bottom but not for pseudo-depth (must be something more to the pseudo-depth bit)
+	- Hold on just a second, it looks like the sliding isn't working right...
+	- The sliding still seems to be working along the original direction of the camera axes, not along their current directions
+	- Probably the eye point needs to be transformed into the modified coordinate frame represented by u,v,w
+	- Another idea is to just rotate the eye point along with the other 2 axes whenever we rotate about a particular axes
+	- The sum needed to be du*u + dv*v + dn*n to get the desired effect
+	- Tried constructing the transformation matrix manually to get the combined rotation and translation for the eye but its not working for some reason
+	- The issue is that when we slide along the u, v, n axes; the camera is not being rotated and translated; it is being only translated by an offset *which in itself* is wrt the u, v and n axes
+	- The coordinate frame of the eye point is not changing, which is probably why the composite rotation and translation matrix caused the weirdness
+	
+Integration
+	- Needs to be used in GenericApp
+	- The instance can be inited in the ctor, have eye inited to (0,0,50), lookAt to (0,0,0), up to (0,1,0)
+	- updateScene can be modified to call slide, roll, pitch, yaw
+	- onResize can be modified to call setAspectRatio
+	- ugh! child classes of GenericApp use mView and mProj directly (facepalm!)
+	- Easiest thing to do right now to get started is to have mView and mProj be set to mCamera->view() and mCamera->proj() respectively
+	- We're in... *fingers crossed*
+	- Hooray! We have a working camera class in DirectX :D
+	
+Observations
+	- It looks like D3D apps which derive from the GenericApp class seem slower than the counterparts which derive directly from the D3DApp class
+	- Could it be that the additional level of inheritance is causing the slowdown?
+	- Its not DXCamera that's causing the slowdown... seems that GenericApp is the cause of the slowdown with its additional layer of abstraction
+	- Lets see if we can add additional timing information to the scenes to get a better idea of how long each piece takes
+	- The draw calls seem to take about the same amount of time between GenericApp and D3DApp
+	- The update calls, however, seem to be the culprit... takes much longer in the case of GenericApp
+	- Hold on a second, upon further investigation, its found that specifically the update call to the Waves object in the GenericApp version takes a lot longer than the Waves object in the D3DApp version
+	- It might not be a performance issue of GenericApp vs D3DApp, rather it looks like a performance issue of ObjectV2
+	- Another thing noticed is that the Fog GenericApp has transparent waves whereas the Land_Water_Textured D3DApp has opaque waves... could transparency be the issue here?
+	- Try using Waves instead of TexturedWavesV1 and see if that makes a difference... yes it did, and here's why....
+	- Waves uses simple vertices, TexturedWavesV1 uses textured vertices which have the additional texture coordinates information
+	- There is no texture mapping happening in the case of Waves like there is in the case of TexturedWavesV1; which is probably why the performance difference was so noticeable
+	- Wait, no... Waves has texture coordinates too (dammit!)
+	- Looks like the two were meant to behave the same but actually don't
+	- Little experiment... Try adding the blend state to Land_Water_Textured's Waves and see what happens
+	
+Zoom in/out
+	- Learned a little something last week, zoom in a camera can be implemented by adjusting the field of view
+	- This makes sense, because when the field of view increases, so does the size of the projection window which results in scene objects being projected onto a smaller portion of the projection window
+	- Vice versa applies when the field of view is decreased
+	- Seemed pretty simple to implement, really need to clean up the code and make the GenericApp class data driven when we get a chance
+	- Yet another discovery, the zoom factor is affected by the build configuration! (fantastic)
+		- 1 degree seemed to work nicely in Debug but is too much in Release
+		- Could make it configuration based but that would end up having to recompile any time we switch configurations (which is not so great)
+		- Could probably target a zoom factor which works for Release

@@ -1,0 +1,73 @@
+Chapter 2 notes
+
+- generic Object class makes it easier to define objects
+- global vertex and index buffers can be used along with vertex and index offsets and ID3D10Device::drawIndexed() to draw many objects
+- world matrix in WVP matrix can be used to offset objects before rendering
+
+Chapter 3 notes
+
+- vertex shader operates in object space (before world space transform)
+- pixel shader operates in clip space (after projection transform)
+- vertex shader must convert points to clip space before passing to the pixel shader
+- Lighting example:
+	- vOut.posW and vOut.normalW are the world-space position and normal for the current vertex respectively, these are taken as part of SurfaceInfo for lighting
+	- vOut.posH is the clip-space position for the current vertex and is passed on to the pixel shader
+	- modification ideas:
+		- add key input for changing shading type (5 = Phong, 6 = Toon, etc, etc)
+		- add key input for chaging shader implementation (7 = vertex, 8 = pixel)
+		
+GenericD3DApp class design
+
+- WinMain (same as usual)	// MAY NOT WANT 
+- Constructor/Destructor (same as usual)		
+- initApp()
+	- D3DApp::InitApp();
+	- initialize clear color
+	- buildFX();
+	- buildVertexLayouts();
+	- CreateResources() = 0;	// needs to be defined
+- CreateResources()
+	- initialize objects
+	- initialize lights
+	- initialize shader and texture resources
+	- initialize primary vertex type
+- onResize (same as usual)
+- updateScene(same as usual, can be customized for more complex scenes)
+	- define default keyboard input (camera movement, rotation)
+	- define app-specific keyboard input
+	- update objects if necessary
+- drawScene
+	- D3DApp::drawScene()
+	- intialize blend state and primitive topology
+	- set shader variables
+	- DrawObjects() = 0; (can customize if necessary)
+	- draw frame stats
+	- mSwapChain->Present(0,0);
+- DrawObjects()
+	- D3D10_TECHNIQUE_DESC techDesc;
+	- mTech->GetDesc(&techDesc);
+	- iterate over techDesc.passes and draw objects
+- buildFX()
+	- initialize shader flags
+	- create shader effect from 'ShaderFilename' (user specified param)
+	- get shader variables
+- buildVertexLayout()
+	- build vertex layout based on vertex type used
+	- rest is same as usual
+- Member variables:
+	- list of objects (app-specific)
+	- list of lights (app-specific)
+	- ID3D10Effect* mFX;
+	- ID3D10EffectTechnique* mTech;
+	- ID3D10InputLayout* mVertexLayout;
+	- list of shader resource views (app-specific)
+	- list of shader variables (app-specific)
+	- world matrix (app-specific)
+	- D3DXMATRIX mView;
+	- D3DXMATRIX mProj;
+	- D3DXMATRIX mWVP;
+	- D3DXVECTOR3 mEyePos;
+	- float mRadius;
+	- float mTheta;
+	- float mPhi;	
+	- std::wstring mShaderFilename;

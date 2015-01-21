@@ -1,0 +1,84 @@
+Chapter 6 - lighting
+
+Phong shading
+	- Need the following vectors
+		- Incident light (L)
+		- Reflected light (R)
+		- View direction (V)
+		- Surface normal (N)
+	
+	- The vectors are normally calculated in world space as not all transformations preserve angles (like the perspective transformation)
+	
+	- Also important to note that the directions of all the vectors are calculated from the surface to their start points
+		- This is in contradiction to the standard definition of vector direction calculation, reason being that in order to compute the dot product between two vectors
+		  (which is required for lighting calculations), the vectors in question need to be joined at the tail or else the sign of the result will be incorrect
+		  
+	- The three main components of Phong shading are:
+		- Ambient lighting
+			- Hack! Emulates secondary light that bounces off of other surfaces
+			- Ambient surface colour (Ma) = amount of RGB ambient light that the surface reflects (range is [0,1])
+				- Usually same as the diffuse surface colour (which is that if the light colour was pure white)
+			- Ambient light colour (Ca) = amount of RGB ambient light that is emitted onto the surface (range is [0,1])
+			- Ambient light component (La) = Ma X Ca (X = component-wise multiplication)
+		
+		- Diffuse lighting
+			- Light is assumed to be scattered equally in all directions
+			- Measured in terms of the amount of light that is incident upon the surface, i.e. relative to the light direction and the surface normal (cos(theta(L,N)))
+			- We know L.N = mag(L) * mag(N) * cos(theta)
+			- Lambertian coefficient (Kd) = max(L.N / (mag(L) * mag(N)), 0)
+				- We take max(,0) because theta can become negative if the light strikes the back of the surface and we don't want to consider that
+			- Diffuse surface colour (Md) = amount of RGB diffuse light that is reflected by the surface
+				- Usually same as the ambient surface colour (which is that if the light colour was pure white)
+			- Diffuse light colour (Cd) = amount of RGB diffuse light that is emitted onto the surface
+				- Usually same as the specular light colour
+			- Diffuse light component (Ld) = Kd * Md X Cd
+		
+		- Specular lighting
+			- Emulates mirror reflection of light
+			- The reflected ray of light is determined such that angle(incidence) = angle(reflection) about the surface normal
+			- This component is viewpoint dependent as the intensity of specular light is highest if the view direction is aligned with the reflected ray direction
+			- A specular cone of reflection is defined within which the specular highlight is visible considering the view direction lies within the cone
+			- The angle of the cone wrt the reflected ray is phi_max
+			- The angle of the view dir wrt the reflected ray is phi
+			- Specular coefficient (Ks) = max(phi^p,0) = max((V.R / (mag(V) * mag(R)))p, 0)
+			- Specular exponent (p) defines the angle of the cone of reflection (phi_max)
+			- For higher values of p, phi_max reduces and hence the intensity of reflected light rises more sharply within the cone from its edges towards the reflected direction
+			- p generally lies in [1,200]
+			- Specular surface colour (Ms) = amount of RGB specular light that is reflected by the surface
+				- Usually same as the specular light colour
+			- Specular light colour (Cs) = amount of RGB specular light that is emitted onto the surface
+				- Usually same as the diffuse light colour
+			- Specular light component (Ls) = Ks * Ms X Cs
+			
+	- Overall lighting equation = La + Ls + Ld
+
+Parallel lights
+	- Emulate lights which are really far away
+	- All light rays are parallel to each other
+	- Again, the light vector's direction is opposite to that of the actual light ray's for lighting calculation purposes
+	
+Point lights
+	- Light from a point source which emits light equally in all directions
+	- Yet again, the light vector's direction is opposite to that of the actual light ray's for lighting calculation purposes
+	- Attenuation is the reduction of intensity in light as distance from the source increases
+	- Modelled as I / (1 + d + d^2) which is a rough approximation that gives artists/programmers better control
+		- I = intensity of light
+		- d = distance from the source
+	- Range can be used to specify a threshold beyond which a light's contribution will not be considered
+	- Phong equation becomes (La + Ld + Ls) / (1 + d + d^2)
+	
+Spot lights
+	- Can be modelled as a combination of a point light source and the specular cone
+	- The spot light originates from a single point like a point light source and illuminates a conical region which is determined very much like the specular cone
+	- phi_spot = -L.d
+		- d is the direction of the spot light
+		- The opposite direction of L is considered because the direction of d is from the light source outwards and as we recall,
+		  the two vectors have to be joined at the tail in order for the dot product to work
+	- Spotlight coefficient (Kspot) = max(phi_spot^s, 0)
+		- s = spot-light cone radius, works very much like the specular shininess factor
+		- Increasing s causes the spotlight to be more focused along the spotlight direction and vice versa
+	- Phong equation becomes (with attenuation): Kspot * (La + Ld + Ls) / (1 + d + d^2)
+	
+- Structure packing in HLSL
+	- The examples from the book use a C++ structure called Light which is passed into HLSL
+	- HLSL apparently packs its structures into groups of 4D vectors, which is why padding floats are introduced in the C++ structs at appropriate intervals
