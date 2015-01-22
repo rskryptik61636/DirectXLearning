@@ -195,6 +195,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\include\TangentQuad.cpp" />
+    <ClCompile Include="..\src\BasicSphere.cpp" />
     <ClCompile Include="..\src\ComplexQuad.cpp" />
     <ClCompile Include="..\src\d3dApp.cpp" />
     <ClCompile Include="..\src\d3dUtil.cpp" />
@@ -209,14 +210,20 @@
     <ClCompile Include="..\src\GBuffer.cpp" />
     <ClCompile Include="..\src\GenericApp.cpp" />
     <ClCompile Include="..\src\GeometryGenerator.cpp" />
+    <ClCompile Include="..\src\LitSphere.cpp" />
     <ClCompile Include="..\src\MathHelper.cpp" />
     <ClCompile Include="..\src\Object.cpp" />
     <ClCompile Include="..\src\RenderStateMaker.cpp" />
+    <ClCompile Include="..\src\RoomV1.cpp" />
     <ClCompile Include="..\src\SamplerStateMaker.cpp" />
     <ClCompile Include="..\src\SceneBuilder.cpp" />
     <ClCompile Include="..\src\SimpleBox.cpp" />
+    <ClCompile Include="..\src\SimpleQuad.cpp" />
     <ClCompile Include="..\src\TangentBox.cpp" />
     <ClCompile Include="..\src\Texture2D.cpp" />
+    <ClCompile Include="..\src\TextureBox.cpp" />
+    <ClCompile Include="..\src\TexturedPeaksAndValleysV1.cpp" />
+    <ClCompile Include="..\src\TexturedWavesV1.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
