@@ -6,6 +6,9 @@
 // header of the base class DXApp
 #include "DXApp.h"
 
+// need the shapes classes
+#include "DXShapes.h"
+
 // TODO: Add additional headers here.
 
 // App which implements a window that is mostly transparent but also slightly reflective in that it posesses slight mirror like properties.
@@ -81,6 +84,15 @@ protected:
 	// @TODO: add protected methods here
 
 protected:
+
+	// Room object.
+	RoomV1Ptr m_pRoom;
+
+	// Room textures.
+	ShaderResourceViewPtr m_pCrateRV, m_pFloorRV, m_pMirrorRV, m_pSpecRV, m_pWallRV;
+
+	// Light source.
+	Light m_parallelLight;
 
 	// @TODO: add protected members here
 

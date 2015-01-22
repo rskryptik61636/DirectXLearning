@@ -4,7 +4,8 @@
 
 // param ctor
 // TODO: Initialize additional members as necessary
-SemiReflectiveWindowApp::SemiReflectiveWindowApp(HINSTANCE hInstance, const std::string strSceneFilePath) : DXApp(hInstance, strSceneFilePath)
+SemiReflectiveWindowApp::SemiReflectiveWindowApp(HINSTANCE hInstance, const std::string strSceneFilePath) 
+	: DXApp(hInstance, strSceneFilePath), m_pRoom(new RoomV1())
 {
 }
 
@@ -70,12 +71,39 @@ void SemiReflectiveWindowApp::drawScene()
 // Define resources such as textures, blend/rasterizer/depth-stencil states and so on
 void SemiReflectiveWindowApp::createResources()
 {
+	// load the required textures
+	const wpath textureRoot = L"N:\\DirectXLearning\\textures\\";	// @TODO: needs to be loaded from a root config file
+
+	const wpath crateTex = textureRoot / wpath(L"WoodCrate02.dds");
+	HR(DirectX::CreateDDSTextureFromFile(md3dDevice, crateTex.file_string().c_str(), 0, &m_pCrateRV.p));
+
+	const wpath floorTex = textureRoot / wpath(L"checkboard.dds");
+	HR(DirectX::CreateDDSTextureFromFile(md3dDevice, floorTex.file_string().c_str(), 0, &m_pFloorRV.p));
+
+	const wpath mirrorTex = textureRoot / wpath(L"ice.dds");
+	HR(DirectX::CreateDDSTextureFromFile(md3dDevice, mirrorTex.file_string().c_str(), 0, &m_pMirrorRV.p));
+
+	const wpath specTex = textureRoot / wpath(L"defaultspec.dds");
+	HR(DirectX::CreateDDSTextureFromFile(md3dDevice, specTex.file_string().c_str(), 0, &m_pSpecRV.p));
+
+	const wpath wallTex = textureRoot / wpath(L"brick01.dds");
+	HR(DirectX::CreateDDSTextureFromFile(md3dDevice, wallTex.file_string().c_str(), 0, &m_pWallRV.p));
+
+	// init parallel light
+	m_parallelLight.dir = DXVector3(0.57735f, -0.57735f, 0.57735f);
+	m_parallelLight.ambient = DXColor(0.4f, 0.4f, 0.4f, 1.0f);
+	m_parallelLight.diffuse = WHITE; // DXColor(1.0f, 1.0f, 1.0f, 1.0f);
+	m_parallelLight.specular = WHITE; // DXColor(1.0f, 1.0f, 1.0f, 1.0f);
+
 	// TODO: Add implementation here.
 }
 
 // Define scene objects which need to be rendered.
 void SemiReflectiveWindowApp::createObjects()
 {
+	// Init the room object.
+	m_pRoom->init(md3dDevice, 1.0f);
+
 	// TODO: Add implementation here.
 }
 
