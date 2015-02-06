@@ -31,6 +31,26 @@ Semi reflective windows
 		- Basic phong shader should suffice.
 		
 		- Consider moving the shader functions out of the DXEffect class into the DXShaderUtils.(h/cpp) files so that they can be invoked directly by an app without having to create a separate effect.
+		
+		- Rather, might be useful to create a shader base class which contains all the common functionality and which can be extended for implementing different shaders.
+		
+		- The shader base class can containing the following functions from DXEffect:
+			- getShaderByteCode
+			
+			- createConstantBuffer
+			
+			- populateConstantBufferData
+			
+			- createStructuredBuffer
+			
+			- all set* functions
+			
+			- constructShaderPath
+			
+		- The following are vertex shader specific and can be moved to the vertex shader class:
+			- getInputLayout accessor function.
+		
+			- createInputLayoutFromShaderInfo
 	
 	- Vertex layout?
 		- Whatever fits the wall and mirror room objects.
