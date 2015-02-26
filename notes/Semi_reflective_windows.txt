@@ -51,6 +51,34 @@ Semi reflective windows
 			- getInputLayout accessor function.
 		
 			- createInputLayoutFromShaderInfo
+			
+		- Each class will need the following additional function.
+			- getShader(): Returns the ID3D11<whatever>Shader* object so that it can be bound to the pipeline.
+			
+		- Another idea. The base class can have the following public interface:
+			- ctor takes in path to the shader file and pointer to the device context.
+			
+			- Pure virtual apply() method that each derived class has to implement. All the pipeline binding can be done in the apply method.
+			  It allows the shader class to set the pipeline exactly the way it expects which helps avoid leaving the pipeline in a bad state.
+			  
+		- Furthermore, classes for each type of shader can be derived from the shader base class which contain specific functionality to
+	      that shader type.
+		  
+		- Finally, concrete shader implementations will contain the shader variables that clients will set and the apply method will be implemented
+		  to set the pipeline stages up appropriately.
+		  
+		- Moved all the resource and constant buffer structs from DXEffect.h to DXShaderUtils.h.
+		
+		- Might make sense to have a separate header/cpp file for these shader classes called DXShaders.(h/cpp)
+		
+		- constructShaderPath would be more useful as a standalone function in DXShaderUtils.h.
+		
+		- Actually, constructShaderPath can be called internally by concrete shader classes to construct the shader path appropriately. Revert back to how it was.
+		
+		- Accessor functions for the shader file path and byte code would be useful. On second thought, maybe not.
+		
+		- The best part is that we may not need class members to represent constant shader variables as we should be able to copy those in directly. Probably a good
+		  idea to have mutator functions to set shader variables.
 	
 	- Vertex layout?
 		- Whatever fits the wall and mirror room objects.
