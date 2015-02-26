@@ -1,102 +1,33 @@
-// header file for the DXEffect class
-#ifndef DX_EFFECT_H
-#define DX_EFFECT_H
-
-#include "d3dUtil.h"
-
-#include "Light.h"
-
-#include "StructuredBuffer.h"
+#ifndef DX_SHADERS_H
+#define DX_SHADERS_H
 
 #include "DXShaderUtils.h"
 
-// auto link against DXEffects lib
-#ifndef DXEFFECTS_LIB_INTERNAL
+#include "Light.h"
 
-#ifdef _DEBUG
+/**********************************************************************
+* Start of class DXShaderBase
+**********************************************************************/
 
-#pragma message("Linking against DXEffectsd.lib")
-#pragma comment(lib, "DXEffectsd.lib")
-
-#else
-
-#pragma message("Linking against DXEffects.lib")
-#pragma comment(lib, "DXEffects.lib")
-
-#endif	// _DEBUG
-
-#endif	// DXEFFECTS_LIB_INTERNAL
-
-// Base class for Direct3D Effects.
-// Contains common functions used by all Effects with pure virtual functions
-// that each specific Effect will have to implement.
-class DXEffect
+// Base class for all shaders. Contains all commonly used functionality.
+class DXShaderBase
 {
 public:
 
-	// Param ctor
-	explicit DXEffect(const wpath shaderRoot, const DevicePtr &pDevice, const DeviceContextPtr &pDeviceContext);
+	// Ctor.
+	explicit DXShaderBase(const wpath shaderPath, const DevicePtr &pDevice);
 
-	// Dtor
-	virtual ~DXEffect();
+	// Dtor.
+	virtual ~DXShaderBase();
 
-	// Causes the effect to be applied. (virtual, may be implemented by derived class)
-	virtual void apply();
+	// Sets up the pipeline stages. All derived classes must implement this.
+	virtual void apply() = 0;
 
-	// Initialization function which creates all the shaders and initializes
-	// all shader constant buffers, resources and sampler states.
-	virtual void init();
-
-	// Returns a string which contains effect info
-	virtual std::wstring getEffectInfo();
-
-	// Accessor function to access the input layout
-	const InputLayoutPtr& getInputLayout()	const	{ return m_pInputLayout; }	
-
-	// Accessor functions for the vertex shader's byte code buffer pointer and size.
-	// WARNING: should only be called after the init() function has been invoked.
-	virtual LPCVOID getVSBufferPointer() const = 0;
-	virtual const SIZE_T getVSBufferSize() const = 0;
-
-	// Unbinds all the shaders, resources and samplers that were bound to the pipeline by this effect.
-	virtual void cleanup();
-	
-protected:	
-
-	// All the constant buffers across all shaders are set. (pure virtual, must be implemented by derived class)
-	virtual void setShaderConstantBuffers() = 0;
-
-	// All the shader textures(resources) are set. (pure virtual, must be implemented by derived class)
-	virtual void setShaderResources() = 0;
-
-	// All the shader samplers are set. (pure virtual, must be implemented by derived class)
-	virtual void setShaderSamplers() = 0;
-
-	// All the shaders are set. (pure virtual, must be implemented by derived class)
-	virtual void setShaders() = 0;
-
-	// Creates all the shaders required for the effect, basically calls to create*Shader. (pure virtual, must be implemented by derived class)
-	virtual void createShaders() = 0;
-
-	// Initializes the input layout for the effect. (pure virtual, must be implemented by derived class)
-	virtual void initInputLayout() = 0;
-
-	// Creates and initializes the constant buffers of all shaders. (pure virtual, must be implemented by derived class)
-	virtual void initShaderConstantBuffers() = 0;
-
-	// Initializes the resources of all shaders. (pure virtual, must be implemented by derived class)
-	virtual void initShaderResources() = 0;
-
-	// Initializes the sampler states of all shaders. (pure virtual, must be implemented by derived class)
-	virtual void initShaderSamplers() = 0;
+protected:
 
 	// Utility class to read the shader's compiled bytecode into the given buffer
 	// source: http://gamedev.stackexchange.com/questions/49197/loading-a-vertex-shader-compiled-by-visual-studio-2012
 	HRESULT getShaderByteCode(const wpath strShaderPath, BlobPtr &shaderBuf);
-
-	// Utility function to construct an input layout using reflection
-	// Source: http://takinginitiative.wordpress.com/2011/12/11/directx-1011-basic-shader-reflection-automatic-input-layout-creation/
-	void createInputLayoutFromShaderInfo(const BlobPtr &pShaderBlob, InputLayoutPtr &pInputLayout);
 
 	// Creates a constant buffer of the specified size.
 	void createConstantBuffer(const BlobPtr &pShaderBlob, const std::string &bufName, ShaderConstantBuffer &constantBuffer);
@@ -112,24 +43,6 @@ protected:
 
 	// Creates a resource view
 	void createResource(const wpath texturePath, const std::string &strResourceName, const BlobPtr &pShaderBlob, ShaderResource &resource);
-
-	// Creates a vertex shader given the absolute path to its compiled bytecode file.
-	void createVertexShader(const wpath strShaderPath, BlobPtr &pShaderByteCode, VertexShaderPtr &pVertexShader);
-
-	// Creates a pixel shader given the absolute path to its compiled bytecode file.
-	void createPixelShader(const wpath strShaderPath, BlobPtr &pShaderByteCode, PixelShaderPtr &pPixelShader);
-
-	// Creates a geometry shader given the absolute path to its compiled bytecode file.
-	void createGeometryShader(const wpath strShaderPath, BlobPtr &pShaderByteCode, GeometryShaderPtr &pGeometryShader);
-
-	// Creates a hull shader given the absolute path to its compiled bytecode file.
-	void createHullShader(const wpath strShaderPath, BlobPtr &pShaderByteCode, HullShaderPtr &pHullShader);
-
-	// Creates a domain shader given the absolute path to its compiled bytecode file.
-	void createDomainShader(const wpath strShaderPath, BlobPtr &pShaderByteCode, DomainShaderPtr &pDomainShader);
-
-	// Creates a compute shader given the absolute path to its compiled bytecode file.
-	void createComputeShader(const wpath strShaderPath, BlobPtr &pShaderByteCode, ComputeShaderPtr &pComputeShader);
 
 	// Utility function to set a specified constant buffer variable's data buffer with the given matrix
 	void setConstantBufferVariableDataWithMatrix(const DXMatrix &matrix, const std::string &strIndex, ShaderConstantBuffer &constantBuffer, const bool bTranspose = true);
@@ -162,12 +75,6 @@ protected:
 	// Utility function to construct the absolute path to a shader file based on the current build configuration
 	wpath constructShaderPath(const wpath &shaderRoot, const wpath &shaderFile);
 
-	// Utility function to display the state of an effect
-	// WARNING: should be enclosed within SpriteBatch::Begin() ... SpriteBatch::End()
-	void displayEffectState(const SpriteBatchPtr &pSpriteBatch, const SpriteFontPtr &pSpriteFont, const wchar_t *pszEffectName,
-		const bool bState, const DXVector2 &offset, const DXColor onColor = GREEN, const DXColor offColor = RED,
-		const wchar_t *pszOnText = L"On", const wchar_t *pszOffText = L"Off");
-
 protected:
 
 	// D3D device
@@ -176,17 +83,16 @@ protected:
 	// D3D device immediate rendering context
 	DeviceContextPtr m_pDeviceContext;
 
-	// Shader root dir
-	wpath m_shaderRoot;
+	// Shader byte code.
+	BlobPtr m_pShaderByteCode;
 
-	// input layout
-	InputLayoutPtr m_pInputLayout;
-	
-};	// end of class DXEffect
+	// Shader file path.
+	wpath m_shaderPath;
+};
 
 // Utility function to set a specified constant buffer member array's data buffer with the given data
 template<typename T>
-void DXEffect::setConstantBufferVariableArray(const std::vector<T> &contents, const int nMaxSize, const std::string &strArrayIndex, ShaderConstantBuffer &constantBuffer)
+void DXShaderBase::setConstantBufferVariableArray(const std::vector<T> &contents, const int nMaxSize, const std::string &strArrayIndex, ShaderConstantBuffer &constantBuffer)
 {
 	const std::size_t nContents = contents.size();
 	assert(nContents <= nMaxSize);	// ensure that the no. of elements in 'contents' is within the maximum allowed range
@@ -205,7 +111,7 @@ void DXEffect::setConstantBufferVariableArray(const std::vector<T> &contents, co
 	// no. of padding bytes required to align a T instance with a 16 byte boundary
 	const std::size_t nPad = static_cast<std::size_t>(ceilf(static_cast<float>(sizeof(T)) / 16.0f)) * 16 - sizeof(T);
 
-	const std::size_t nPaddedSize = sizeof(T)+nPad;	// size of a T instance inclusive of padding
+	const std::size_t nPaddedSize = sizeof(T) + nPad;	// size of a T instance inclusive of padding
 	std::vector<BYTE> allElements((nMaxSize - 1 > 0 ? nMaxSize - 1 : 0) * nPaddedSize + sizeof(T), 0);	// create the buffer of appropriate size
 	std::ptrdiff_t nOffset = 0;	// pointer offset for each array element
 	if (nContents > 0)
@@ -228,7 +134,7 @@ void DXEffect::setConstantBufferVariableArray(const std::vector<T> &contents, co
 
 // Creates a structured buffer of the required size to contain the specified no. of elements as well as with the given bind flags.
 template<typename T>
-void DXEffect::createStructuredBuffer(const BlobPtr &pShaderBlob, const std::string &bufName, const UINT nElements, const UINT bindFlags,
+void DXShaderBase::createStructuredBuffer(const BlobPtr &pShaderBlob, const std::string &bufName, const UINT nElements, const UINT bindFlags,
 	ShaderStructuredBuffer<T> &structuredBuffer, const bool bIsDynamic /*= true*/, const T* pInitData /*= NULL*/, const bool bAppendConsume /*= false*/)
 {
 	// reflect the shader and get the structured buffer bufName's info
@@ -262,7 +168,7 @@ void DXEffect::createStructuredBuffer(const BlobPtr &pShaderBlob, const std::str
 
 // Utility function to set a specified structured buffer's data buffer with the given elements
 template<typename T>
-void DXEffect::setStructuredBuffer(const std::vector<T> &elements, const UINT nElements, ShaderStructuredBuffer<T> &structuredBuffer)
+void DXShaderBase::setStructuredBuffer(const std::vector<T> &elements, const UINT nElements, ShaderStructuredBuffer<T> &structuredBuffer)
 {
 	// Ensure that the elements vector is of the right size.
 	assert(elements.size() == nElements);
@@ -279,9 +185,90 @@ void DXEffect::setStructuredBuffer(const std::vector<T> &elements, const UINT nE
 
 // Utility function to set a specified constant buffer variable's data buffer with the given typed datum
 template<typename T>
-void DXEffect::setConstantBufferVariableTypedDatum(const T &datum, const std::string &strIndex, ShaderConstantBuffer &constantBuffer)
+void DXShaderBase::setConstantBufferVariableTypedDatum(const T &datum, const std::string &strIndex, ShaderConstantBuffer &constantBuffer)
 {
 	setConstantBufferVariableData(reinterpret_cast<const BYTE*>(&datum), sizeof(datum), strIndex, constantBuffer);
 }
 
-#endif	// DX_EFFECT_H
+/**********************************************************************
+* End of abstract class DXShaderBase
+**********************************************************************/
+
+/**********************************************************************
+* Start of vertex shader base class
+**********************************************************************/
+
+// Vertex shader base class.
+class DXVertexShader : public DXShaderBase
+{
+public:
+
+	// Ctor.
+	explicit DXVertexShader(const wpath &shaderPath, const DevicePtr &pDevice);
+
+	// Dtor.
+	virtual ~DXVertexShader();
+
+	// All children must implement this.
+	virtual void apply() = 0;
+
+	// Accessor function to access the input layout
+	const InputLayoutPtr& getInputLayout()	const	{ return m_pInputLayout; }
+
+protected:
+
+	// Utility function to construct an input layout using reflection
+	// Source: http://takinginitiative.wordpress.com/2011/12/11/directx-1011-basic-shader-reflection-automatic-input-layout-creation/
+	void createInputLayout();
+
+	//// Creates a vertex shader given the absolute path to its compiled bytecode file.
+	//void createVertexShader(const wpath strShaderPath, BlobPtr &pShaderByteCode, VertexShaderPtr &pVertexShader);
+
+protected:
+
+	// Shader.
+	VertexShaderPtr m_pShader;
+
+	// Input layout.
+	InputLayoutPtr m_pInputLayout;
+
+};	// end of class DXVertexShader
+
+/**********************************************************************
+* End of vertex shader base class
+**********************************************************************/
+
+/**********************************************************************
+* Start of pixel shader base class
+**********************************************************************/
+
+// Pixel shader base class.
+class DXPixelShader : public DXShaderBase
+{
+public:
+
+	// Ctor.
+	explicit DXPixelShader(const wpath &shaderPath, const DevicePtr &pDevice);
+
+	// Dtor.
+	virtual ~DXPixelShader();
+
+	// All children must implement this.
+	virtual void apply() = 0;
+
+protected:
+
+	// TODO: Add implementation here.
+
+protected:
+
+	// Shader.
+	PixelShaderPtr m_pShader;
+
+};	// end of class DXPixelShader
+
+/**********************************************************************
+* End of vertex shader base class
+**********************************************************************/
+
+#endif	// DX_SHADERS_H
