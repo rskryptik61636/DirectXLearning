@@ -175,8 +175,6 @@
     <ClInclude Include="..\include\DXCamera.h" />
     <ClInclude Include="..\include\dxerr.h" />
     <ClInclude Include="..\include\DXModel.h" />
-    <ClInclude Include="..\include\DXShaders.h" />
-    <ClInclude Include="..\include\DXShaderUtils.h" />
     <ClInclude Include="..\include\DXShapes.h" />
     <ClInclude Include="..\include\DXStringUtils.h" />
     <ClInclude Include="..\include\GameTimer.h" />
@@ -204,8 +202,6 @@
     <ClCompile Include="..\src\DXCamera.cpp" />
     <ClCompile Include="..\src\dxerr.cpp" />
     <ClCompile Include="..\src\DXModel.cpp" />
-    <ClCompile Include="..\src\DXShaders.cpp" />
-    <ClCompile Include="..\src\DXShaderUtils.cpp" />
     <ClCompile Include="..\src\DXShapes.cpp" />
     <ClCompile Include="..\src\DXStringUtils.cpp" />
     <ClCompile Include="..\src\GameTimer.cpp" />

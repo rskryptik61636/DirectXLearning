@@ -45,6 +45,12 @@
     <ClCompile Include="..\src\SkyboxEffect.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
+    <ClCompile Include="..\src\DXShaders.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="..\src\DXShaderUtils.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\include\DXEffect.h">
@@ -78,6 +84,12 @@
       <Filter>Header Files</Filter>
     </ClInclude>
     <ClInclude Include="..\include\SkyboxEffect.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\DXShaders.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="..\include\DXShaderUtils.h">
       <Filter>Header Files</Filter>
     </ClInclude>
   </ItemGroup>
@@ -114,6 +126,8 @@
     <FxCompile Include="..\shaders\tiledDeferredShadowMapSimpleCS.hlsl" />
     <FxCompile Include="..\shaders\tiledDeferredShadowMapPCFCS.hlsl" />
     <FxCompile Include="..\shaders\deferredMotionBlurFinalPS.hlsl" />
+    <FxCompile Include="..\shaders\basicShadingVS.hlsl" />
+    <FxCompile Include="..\shaders\basicShadingPS.hlsl" />
   </ItemGroup>
   <ItemGroup>
     <None Include="..\shaders\debugTextureCommon.hlsli" />
@@ -123,5 +137,8 @@
     <None Include="..\shaders\particleSystemCommon.hlsli" />
     <None Include="..\shaders\skyboxCommon.hlsli" />
     <None Include="..\shaders\tiledDeferredShadingCommon.hlsli" />
+    <None Include="..\shaders\dataTypes.hlsli" />
+    <None Include="..\shaders\mathUtils.hlsli" />
+    <None Include="..\shaders\shadingUtils.hlsli" />
   </ItemGroup>
 </Project>

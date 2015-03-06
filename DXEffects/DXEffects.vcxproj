@@ -154,6 +154,8 @@
     <ClCompile Include="..\src\DebugTextureEffect.cpp" />
     <ClCompile Include="..\src\DeferredShadingEffect.cpp" />
     <ClCompile Include="..\src\DXEffect.cpp" />
+    <ClCompile Include="..\src\DXShaders.cpp" />
+    <ClCompile Include="..\src\DXShaderUtils.cpp" />
     <ClCompile Include="..\src\ParticleSystemEffect.cpp" />
     <ClCompile Include="..\src\ShadowMap.cpp" />
     <ClCompile Include="..\src\ShadowNormalMappingEffect.cpp" />
@@ -161,6 +163,8 @@
     <ClCompile Include="..\src\TexEffect.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\include\DXShaders.h" />
+    <ClInclude Include="..\include\DXShaderUtils.h" />
     <ClInclude Include="..\include\ParticleSystemEffect.h" />
     <ClInclude Include="..\include\SkyboxEffect.h" />
     <ClInclude Include="..\include\StructuredBuffer.h" />
@@ -174,6 +178,42 @@
     <ClInclude Include="..\include\TexEffect.h" />
   </ItemGroup>
   <ItemGroup>
+    <FxCompile Include="..\shaders\basicShadingPS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename)</EntryPointName>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">5.0</ShaderModel>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)shaders\compiled\$(Platform)\$(Configuration)\%(Filename).cso</ObjectFileOutput>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename)</EntryPointName>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">5.0</ShaderModel>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)shaders\compiled\$(Platform)\$(Configuration)\%(Filename).cso</ObjectFileOutput>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename)</EntryPointName>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)shaders\compiled\$(Platform)\$(Configuration)\%(Filename).cso</ObjectFileOutput>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename)</EntryPointName>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)shaders\compiled\$(Platform)\$(Configuration)\%(Filename).cso</ObjectFileOutput>
+    </FxCompile>
+    <FxCompile Include="..\shaders\basicShadingVS.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(SolutionDir)shaders\compiled\$(Platform)\$(Configuration)\%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(SolutionDir)shaders\compiled\$(Platform)\$(Configuration)\%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(SolutionDir)shaders\compiled\$(Platform)\$(Configuration)\%(Filename).cso</ObjectFileOutput>
+      <ObjectFileOutput Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(SolutionDir)shaders\compiled\$(Platform)\$(Configuration)\%(Filename).cso</ObjectFileOutput>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">5.0</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">5.0</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">%(Filename)</EntryPointName>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">%(Filename)</EntryPointName>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">%(Filename)</EntryPointName>
+      <EntryPointName Condition="'$(Configuration)|$(Platform)'=='Release|x64'">%(Filename)</EntryPointName>
+    </FxCompile>
     <FxCompile Include="..\shaders\buildShadowMapPS.hlsl">
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
       <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
@@ -747,11 +787,14 @@
     </FxCompile>
   </ItemGroup>
   <ItemGroup>
+    <None Include="..\shaders\dataTypes.hlsli" />
     <None Include="..\shaders\debugTextureCommon.hlsli" />
     <None Include="..\shaders\deferredShadingCommonPS.hlsli" />
     <None Include="..\shaders\deferredShadingCommon.hlsli" />
+    <None Include="..\shaders\mathUtils.hlsli" />
     <None Include="..\shaders\particleSystemCommon.hlsli" />
     <None Include="..\shaders\renderShadowMapCommon.hlsli" />
+    <None Include="..\shaders\shadingUtils.hlsli" />
     <None Include="..\shaders\skyboxCommon.hlsli" />
     <None Include="..\shaders\tiledDeferredShadingCommon.hlsli" />
   </ItemGroup>
