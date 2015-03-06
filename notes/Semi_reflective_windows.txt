@@ -79,6 +79,21 @@ Semi reflective windows
 		
 		- The best part is that we may not need class members to represent constant shader variables as we should be able to copy those in directly. Probably a good
 		  idea to have mutator functions to set shader variables.
+		  
+		- It might be helpful to split the apply method into a number of set methods like so:
+			- setConstants: set per frame and/or per object constants. The params can vary from shader to shader.
+			- setResources: like the name says.
+			- setSamplers: also like the name says.
+			
+		- There are a lot of 'common' header files strewn throughout the shader files. Might be useful to consolidate them into a few no. of headers.
+			- dataTypes.hlsli: Contains all vertex types and associated data structures.
+			- mathUtils.hlsli: Contains all math related functionality.
+			- shadingUtils.hlsli: Contains the bulk of lighthelper.fx and other shading related functionality.
+			- (not required) physicsUtils.hlsli: Contains all intersection code and associated functionality. On second thought, this can probably be combined with mathUtils.hlsli.
+			
+		- It may make sense to keep the global variables within each shader file for now because we don't want cross contamination caused by having them in header files.
+		
+		- Onwards to writing the basic shading classes...
 	
 	- Vertex layout?
 		- Whatever fits the wall and mirror room objects.
