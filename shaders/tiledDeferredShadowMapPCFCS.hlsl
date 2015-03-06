@@ -103,7 +103,7 @@ void tiledDeferredShadowMapPCFCS(uint3 groupId			: SV_GroupID,
 			}
 			shadowFactor /= pow((float)gTapSize, 2.0f);
 		
-			litColour += shadowFactor * Spotlight(surfaceInfo, gSpotLights[sShortlistedSpotLights[k]], gEyePosW);
+			litColour += shadowFactor * SpotLight(surfaceInfo, gSpotLights[sShortlistedSpotLights[k]], gEyePosW);
 		}		
 	}		
 

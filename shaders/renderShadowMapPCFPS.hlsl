@@ -77,7 +77,7 @@ float4 renderShadowMapPCFPS(VS_OUT pIn) : SV_TARGET
 			// Compute the final pixel colour using the computed shadow factor
 			SurfaceInfo material = { pIn.posW, normalW, diffuse, specular };
 
-			litColor += /*(gSpotLights[i].ambient.rgb * diffuse.rgb) +*/ shadowFactor * Spotlight(material, gSpotLights[i], gEyePosW);
+			litColor += /*(gSpotLights[i].ambient.rgb * diffuse.rgb) +*/ shadowFactor * SpotLight(material, gSpotLights[i], gEyePosW);
 		}		
 	}	
 

@@ -66,7 +66,7 @@ float4 deferredShadowMapSimplePS(VS_OUT pIn) : SV_TARGET
 			// Compute the final pixel colour
 			SurfaceInfo material = { posW, normalW, diffuse, specular };
 
-			litColour += Spotlight(material, gSpotLights[i], gEyePosW);
+			litColour += SpotLight(material, gSpotLights[i], gEyePosW);
 		}
 	}
 

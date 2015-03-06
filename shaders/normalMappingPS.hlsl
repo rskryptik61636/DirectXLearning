@@ -77,7 +77,7 @@ float4 normalMappingPS(VS_OUT pIn) : SV_TARGET
 	[loop]
 	for (int i = 0; i < nSpotLights; ++i)
 	{
-		litColor += Spotlight(v, gSpotLights[i], gEyePosW);
+		litColor += SpotLight(v, gSpotLights[i], gEyePosW);
 	}
 
 	// set the alpha component of the computed light color as the diffuse alpha component

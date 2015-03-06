@@ -83,7 +83,7 @@ float4 deferredMotionBlurPS(VS_OUT vIn) : SV_TARGET
 
 		[loop]
 		for (uint k = 0; k < nSpotLights; ++k)
-			litColour += Spotlight(surfaceInfo, gSpotLights[k], gEyePosW);
+			litColour += SpotLight(surfaceInfo, gSpotLights[k], gEyePosW);
 	}
 
 	// Divide the computed light colour by the no. of samples and return it
@@ -141,7 +141,7 @@ float4 deferredMotionBlurPS(VS_OUT vIn) : SV_TARGET
 
 	[loop]
 	for (uint k = 0; k < nSpotLights; ++k)
-		litColour += Spotlight(surfaceInfo, gSpotLights[k], gEyePosW);
+		litColour += SpotLight(surfaceInfo, gSpotLights[k], gEyePosW);
 
 	return float4(litColour, 1.0f);
 #endif	// 0

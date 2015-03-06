@@ -6,6 +6,8 @@
 
 // Modified by Rohit S to use the Phong-Blinn shading model (Feb-27-2014)
 
+#include "mathUtils.hlsli"
+
 struct Light
 {
 	float3 pos;
@@ -93,7 +95,7 @@ float3 PointLight(SurfaceInfo material, Light L, float3 eyePos)
 	return litColor / dot(L.att, float3(1.0f, d, d*d));
 }
 
-float3 Spotlight(SurfaceInfo material, Light L, float3 eyePos)
+float3 SpotLight(SurfaceInfo material, Light L, float3 eyePos)
 {
 	float3 litColor = PointLight(material, L, eyePos);
 	
@@ -121,22 +123,4 @@ float3 ComputePerturbedNormalFromNormalMap(Texture2D gNormalMap, SamplerState gS
 	float3 B = cross(N, T);
 	float3x3 TBN = float3x3(T, B, N);
 	return normalize(mul(normalSample, TBN));
-}
-
-// Helper function to determine whether a given (x,y) value is in the [0,1] range
-bool inRange(float x, float y)
-{
-	return x >= 0.0f && x <= 1.0f && y >= 0.0f && y <= 1.0f;
-}
-
-// Helper function to perform a window-to-viewport-esque mapping as seen in http://www.siggraph.org/education/materials/HyperGraph/viewing/view2d/pwint.htm
-float windowToViewport(float winVal, float winMin, float winMax, float viewMin, float viewMax)
-{
-	return (viewMax - viewMin) / (winMax - winMin) * (winVal - winMin) + viewMin;
-}
-
-// Helper function to compute the PCF offset.
-float2 pcfOffset(float x, float y, float2 nShadowMapSize)
-{
-	return float2(x * 1.0f / nShadowMapSize.x, y * 1.0f / nShadowMapSize.y);
 }

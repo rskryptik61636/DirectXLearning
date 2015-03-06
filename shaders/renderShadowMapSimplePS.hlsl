@@ -60,7 +60,7 @@ float4 renderShadowMapSimplePS(VS_OUT pIn) : SV_TARGET
 			// Compute the final pixel colour
 			SurfaceInfo material = { pIn.posW, normalW, diffuse, specular };
 
-			litColor += Spotlight(material, gSpotLights[i], gEyePosW);
+			litColor += SpotLight(material, gSpotLights[i], gEyePosW);
 		}		
 	}	
 

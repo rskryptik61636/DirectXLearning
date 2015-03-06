@@ -31,8 +31,6 @@ cbuffer cbPerFrame
 Texture2D gDiffuseMap;
 Texture2D gSpecMap;
 
-static const float PI = 3.14159265f;
-
 SamplerState gTriLinearSam;
 
 struct VS_OUT
@@ -82,7 +80,7 @@ float4 texPS(VS_OUT pIn) : SV_Target
 	[loop]
 	for (int i = 0; i < nSpotLights; ++i)
 	{
-		litColor += Spotlight(v, gSpotLights[i], gEyePosW);
+		litColor += SpotLight(v, gSpotLights[i], gEyePosW);
 	}
 
 	// set the alpha component of the computed light color as the diffuse alpha component

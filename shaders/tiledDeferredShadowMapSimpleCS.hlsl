@@ -92,7 +92,7 @@ void tiledDeferredShadowMapSimpleCS(uint3 groupId			: SV_GroupID,
 				continue;
 			}
 		
-			litColour += Spotlight(surfaceInfo, gSpotLights[sShortlistedSpotLights[k]], gEyePosW);
+			litColour += SpotLight(surfaceInfo, gSpotLights[sShortlistedSpotLights[k]], gEyePosW);
 		}		
 	}		
 

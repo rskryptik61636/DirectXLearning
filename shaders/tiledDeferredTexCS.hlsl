@@ -73,7 +73,7 @@ void tiledDeferredTexCS(uint3 groupId			: SV_GroupID,
 
 		[loop]
 		for (uint k = 0; k < sNumShortlistedSpotLights; ++k)
-			litColour += Spotlight(surfaceInfo, gSpotLights[sShortlistedSpotLights[k]], gEyePosW);
+			litColour += SpotLight(surfaceInfo, gSpotLights[sShortlistedSpotLights[k]], gEyePosW);
 
 		// Write the computed colour to the output.
 		gOutput[texC] = float4(litColour, 1.0f);

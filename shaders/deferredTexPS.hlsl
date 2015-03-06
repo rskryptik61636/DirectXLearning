@@ -58,7 +58,7 @@ float4 deferredTexPS(VS_OUT vIn) : SV_TARGET
 
 	[loop]
 	for (uint k = 0; k < nSpotLights; ++k)
-		litColour += Spotlight(surfaceInfo, gSpotLights[k], gEyePosW);
+		litColour += SpotLight(surfaceInfo, gSpotLights[k], gEyePosW);
 
 	return float4(litColour, 1.0f);
 }
