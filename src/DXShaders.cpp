@@ -1,7 +1,7 @@
 #include "DXShaders.h"
 
 /**********************************************************************
-* Start of abstract class DXShaderBase
+* Start of shader base classes
 **********************************************************************/
 
 // Ctor.
@@ -192,38 +192,18 @@ void DXShaderBase::setStructuredMatrices(const std::vector<DXMatrix> &matrices, 
 		setStructuredBuffer<DXMatrix>(matrices, nMatrices, matrixBuffer);
 }
 
-// Utility function to construct the absolute path to a shader file based on the current build configuration
-wpath DXShaderBase::constructShaderPath(const wpath &shaderRoot, const wpath &shaderFile)
+// TODO: Remove when done testing.
+#if 0
+// Utility function to copy a matrix into a mapped subresource.
+void DXShaderBase::copyMatrixToMappedSubresource(const ShaderConstantBuffer &buf, const std::string &varName, const DXMatrix &matrix, D3D11_MAPPED_SUBRESOURCE &dst)
 {
-	// define the paths of the tex vertex and pixel shaders based on the build configuration
-#ifndef _WIN64
-
-#ifdef _DEBUG
-	wpath shaderPath(shaderRoot / wpath(L"Win32") / wpath(L"Debug") / shaderFile);
-#else
-	wpath shaderPath(shaderRoot / wpath(L"Win32") / wpath(L"Release") / shaderFile);
-#endif	// _DEBUG
-
-#else
-
-#ifdef _DEBUG
-	wpath shaderPath(shaderRoot / wpath(L"x64") / wpath(L"Debug") / shaderFile);
-#else
-	wpath shaderPath(shaderRoot / wpath(L"x64") / wpath(L"Release") / shaderFile);
-#endif	// _DEBUG
-
-#endif	// _WIN64
-
-	return shaderPath;
+	copyDataToMappedSubresource<DXMatrix>(
+		buf,
+		varName,
+		&(matrix.Transpose()),
+		dst);
 }
-
-/**********************************************************************
-* End of abstract class DXShaderBase
-**********************************************************************/
-
-/**********************************************************************
-* Start of vertex shader base class
-**********************************************************************/
+#endif // 0
 
 // Ctor.
 /*explicit*/ DXVertexShader::DXVertexShader(const wpath &shaderPath, const DevicePtr &pDevice)
@@ -317,13 +297,38 @@ void DXVertexShader::createInputLayout()
 	pReflector.Release();
 }
 
-/**********************************************************************
-* End of vertex shader base class
-**********************************************************************/
+// Binds the shader to the pipeline.
+void DXVertexShader::bindShader()
+{
+	m_pDeviceContext->VSSetShader(m_pShader.p, nullptr, 0);
+}
 
-/**********************************************************************
-* Start of pixel shader base class
-**********************************************************************/
+// Binds constant buffers to the pipeline.
+void DXVertexShader::bindContantBuffers(
+	UINT bindSlot,
+	UINT nBuffers,
+	BufferRawPtr const *ppBuffers)
+{
+	m_pDeviceContext->VSSetConstantBuffers(bindSlot, nBuffers, ppBuffers);
+}
+
+// Binds shader resources to the pipelines.
+void DXVertexShader::bindResources(
+	UINT bindSlot,
+	UINT nResources,
+	ShaderResourceViewRawPtr const *ppResources)
+{
+	m_pDeviceContext->VSSetShaderResources(bindSlot, nResources, ppResources);
+}
+
+// Binds samplers to the pipelines.
+void DXVertexShader::bindSamplers(
+	UINT bindSlot,
+	UINT nSamplers,
+	SamplerStateRawPtr const *ppSamplers)
+{
+	m_pDeviceContext->VSSetSamplers(bindSlot, nSamplers, ppSamplers);
+}
 
 // Ctor.
 /*explicit*/ DXPixelShader::DXPixelShader(const wpath &shaderPath, const DevicePtr &pDevice)
@@ -337,6 +342,93 @@ void DXVertexShader::createInputLayout()
 /*virtual*/ DXPixelShader::~DXPixelShader()
 {}
 
+// Binds the shader to the pipeline.
+void DXPixelShader::bindShader()
+{
+	m_pDeviceContext->PSSetShader(m_pShader.p, nullptr, 0);
+}
+
+// Binds constant buffers to the pipeline.
+void DXPixelShader::bindContantBuffers(
+	UINT bindSlot,
+	UINT nBuffers,
+	BufferRawPtr const *ppBuffers)
+{
+	m_pDeviceContext->PSSetConstantBuffers(bindSlot, nBuffers, ppBuffers);
+}
+
+// Binds shader resources to the pipelines.
+void DXPixelShader::bindResources(
+	UINT bindSlot,
+	UINT nResources,
+	ShaderResourceViewRawPtr const *ppResources)
+{
+	m_pDeviceContext->PSSetShaderResources(bindSlot, nResources, ppResources);
+}
+
+// Binds samplers to the pipelines.
+void DXPixelShader::bindSamplers(
+	UINT bindSlot,
+	UINT nSamplers,
+	SamplerStateRawPtr const *ppSamplers)
+{
+	m_pDeviceContext->PSSetSamplers(bindSlot, nSamplers, ppSamplers);
+}
+
 /**********************************************************************
-* End of pixel shader base class
+* End of shader base classes
 **********************************************************************/
+
+#if 0
+/**********************************************************************
+* Start of shader implementations
+**********************************************************************/
+
+// Param ctor.
+/*explicit*/ BasicShadingVS::BasicShadingVS(const wpath &shaderRoot, const DevicePtr &pDevice)
+	: DXVertexShader(constructShaderPath(shaderRoot, L"basicShadingVS.cso"), pDevice)
+{
+	// Create the cbPerObject constant buffer.
+	createConstantBuffer(m_pShaderByteCode, "cbPerObject", m_cbPerObject);
+}
+
+// Binds the shader as well as all its associated constant buffers, resources and samplers to the pipeline.
+void BasicShadingVS::bind(
+	const DXMatrix *pWorld,
+	const DXMatrix *pWorldInvTrans,
+	const DXMatrix *pWvp,
+	const DXMatrix *pTexMtx)
+{
+	// Ensure that all the constants have been passed in.
+	assert(
+		pWorld &&
+		pWorldInvTrans &&
+		pWvp &&
+		pTexMtx);
+
+	// Bind the shader to the pipeline.
+	m_pDeviceContext->VSSetShader(m_pShader.p, nullptr, 0);
+
+	// Map the cbPerObject to system memory.
+	m_cbPerObject.map(m_pDeviceContext);
+
+	// Copy the matrices into the mapped subresource.
+	m_cbPerObject.setMatrix("gWorld", *pWorld);
+	m_cbPerObject.setMatrix("gWorldInvTrans", *pWorldInvTrans);
+	m_cbPerObject.setMatrix("gWVP", *pWvp);
+	m_cbPerObject.setMatrix("gTexMtx", *pTexMtx);
+
+	// Unmap cbPerObject.
+	m_cbPerObject.unmap(m_pDeviceContext);
+
+	// Bind cbPerObject to the pipeline.
+	m_pDeviceContext->VSSetConstantBuffers(
+		m_cbPerObject.bindPoint(),
+		1,
+		&m_cbPerObject.pBuffer.p);
+}
+
+/**********************************************************************
+* End of shader implementations
+**********************************************************************/
+#endif // 0

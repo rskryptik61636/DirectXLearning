@@ -57,14 +57,73 @@ struct ShaderConstantBuffer : public ShaderVar
 	};
 
 	// Default ctor
-	ShaderConstantBuffer() : ShaderVar(), varsInfo(), pBuffer(), eBufferType(BT_CONSTANT)
+	ShaderConstantBuffer() : 
+		ShaderVar(), 
+		varsInfo(), 
+		pBuffer(), 
+		eBufferType(BT_CONSTANT), 
+		mappedData(),
+		pDeviceContext(),
+		bMapped(false)
 	{}
+
+	// Param ctor, handles init.
+	ShaderConstantBuffer(const std::string &bufName, const DevicePtr &pDevice, const DeviceContextPtr& pDC, const BlobPtr &pShaderByteCode);
+
+	// Accessor method for the byte offset of a variable.
+	const UINT varByteOffset(const std::string &name) const
+	{
+		return varsInfo.at(name).varDesc.StartOffset;
+	}
+
+	// Accessor method for the size of a variable.
+	const UINT varSizeInBytes(const std::string &name) const
+	{
+		return varsInfo.at(name).varDesc.Size;
+	}
+
+	// Accessor method for the constant buffer's bind point.
+	const UINT bindPoint() const
+	{
+		return bindDesc.BindPoint;
+	}
+
+	// Map the constant buffer to system memory.
+	void map();
+
+	// Unmap the constant buffer from system memory.
+	void unmap();
+
+	// Utility function to copy a matrix into a mapped subresource.
+	// WARNING: Should not be invoked unless the constant buffer has been mapped first.
+	void setMatrix(const std::string &varName, const DXMatrix &matrix);
+
+	// Utility function to copy a shader constant into its mapped memory.
+	// WARNING: Should not be invoked unless the constant buffer has been mapped first.
+	template<typename T>
+	void setDatum(const std::string &varName, const T* pSrc);
 
 	ShaderConstantBufferVariableInfo varsInfo;	// info about the constant buffer variables
 	BufferPtr pBuffer;							// constant buffer
 	BufferType eBufferType;
+	D3D11_MAPPED_SUBRESOURCE mappedData;		// Mapped subresource which will be used to transfer data.
+	DeviceContextPtr pDeviceContext;
+	bool bMapped;	
 
 };	// end of struct ShaderConstantBuffer
+typedef std::unique_ptr<ShaderConstantBuffer> ShaderConstantBufferPtr;
+
+// Utility function to copy a shader constant into its mapped memory.
+template<typename T>
+void ShaderConstantBuffer::setDatum(const std::string &varName, const T* pSrc)
+{
+	assert(bMapped);	// Ensure that the constant buffer has been mapped.
+
+	CopyMemory(
+		reinterpret_cast<BYTE*>(mappedData.pData) + varByteOffset(varName),
+		reinterpret_cast<const BYTE*>(pSrc),
+		varSizeInBytes(varName));
+}
 
 // Structured buffer info
 template<typename T>
@@ -101,5 +160,8 @@ struct ShaderSamplerState : public ShaderVar
 
 // Loads the texture from the given path
 HRESULT loadTexture(const DevicePtr &pDevice, const DeviceContextPtr &pDeviceContext, const wpath texturePath, ID3D11Resource **pResource, ID3D11ShaderResourceView **pResourceView);
+
+// Utility function to construct the absolute path to a shader file based on the current build configuration
+wpath constructShaderPath(const wpath &shaderRoot, const wpath &shaderFile);
 
 #endif	// DX_SHADER_UTILS_H
