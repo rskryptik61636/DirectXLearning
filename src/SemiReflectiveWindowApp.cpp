@@ -116,6 +116,36 @@ void SemiReflectiveWindowApp::drawObjects()
 // Define to build the shaders which will be used by the application.
 void SemiReflectiveWindowApp::buildShaders()
 {
+	// Construct the basic vertex and pixel shaders.
+	m_pvsBasic.reset(
+		new DXVertexShader(
+			constructShaderPath(
+				m_pSceneBuilder->getShaderRootW(), 
+				wpath(L"basicShadingVS.cso")), 
+			md3dDevice) );
+
+	m_ppsBasic.reset(
+		new DXPixelShader(
+			constructShaderPath(
+				m_pSceneBuilder->getShaderRootW(),
+				wpath(L"basicShadingPS.cso")),
+			md3dDevice) );
+
+	// Create the constant buffers.
+	m_pcbPerObject.reset(
+		new ShaderConstantBuffer(
+			"cbPerObject",
+			md3dDevice,
+			md3dDeviceContext,
+			m_pvsBasic->byteCode() ) );
+
+	m_pcbPerFrame.reset(
+		new ShaderConstantBuffer(
+			"cbPerFrame",
+			md3dDevice,
+			md3dDeviceContext,
+			m_ppsBasic->byteCode() ) );
+
 	// TODO: Add implementation here.
 }
 

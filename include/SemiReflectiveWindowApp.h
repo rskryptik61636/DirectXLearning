@@ -9,6 +9,9 @@
 // need the shapes classes
 #include "DXShapes.h"
 
+// Shader classes.
+#include "DXShaders.h"
+
 // TODO: Add additional headers here.
 
 // App which implements a window that is mostly transparent but also slightly reflective in that it posesses slight mirror like properties.
@@ -93,6 +96,14 @@ protected:
 
 	// Light source.
 	Light m_parallelLight;
+
+	// Basic shaders.
+	DXVertexShaderPtr m_pvsBasic;
+	DXPixelShaderPtr m_ppsBasic;
+
+	// Constant buffers.
+	ShaderConstantBufferPtr m_pcbPerObject;
+	ShaderConstantBufferPtr m_pcbPerFrame;
 
 	// @TODO: add protected members here
 
