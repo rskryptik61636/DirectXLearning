@@ -58,13 +58,13 @@ protected:
 
 	std::wstring mFrameStats;
  
-	ID3D11Device*    md3dDevice;
+	DevicePtr    md3dDevice;
 	IDXGISwapChain*  mSwapChain;
 	ID3D11Texture2D* mDepthStencilBuffer;
 	ID3D11RenderTargetView* mRenderTargetView;
 	ID3D11DepthStencilView* mDepthStencilView;
 	//ID3DX10Font* mFont;	// @TODO: remove when done testing
-	ID3D11DeviceContext* md3dDeviceContext;
+	DeviceContextPtr md3dDeviceContext;
 	D3D_FEATURE_LEVEL mFeatureLevel;
 	D3D11_VIEWPORT mDefaultViewport;
 

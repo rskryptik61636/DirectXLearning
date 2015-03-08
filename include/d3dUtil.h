@@ -127,6 +127,7 @@ npath wideToNarrowPath(const wpath &src);
 //*****************************************************************************
 
 #define ReleaseCOM(x) { if(x){ x->Release();x = 0; } }
+#define ReleaseCOMPtr(x) { if(x){ x.Release(); x = 0; } }
 
 //*****************************************************************************
 // Convenience macro for including shader files in the same dir
@@ -224,6 +225,7 @@ typedef CComPtr<ID3D11BlendState> BlendStatePtr;
 typedef CComPtr<ID3D11DepthStencilState> DepthStencilStatePtr;
 typedef CComPtr<ID3D11DepthStencilView> DepthStencilViewPtr;
 typedef CComPtr<ID3D11ShaderResourceView> ShaderResourceViewPtr;
+typedef ID3D11ShaderResourceView* ShaderResourceViewRawPtr;
 typedef CComPtr<ID3D11RenderTargetView> RenderTargetViewPtr;
 typedef CComPtr<ID3D11UnorderedAccessView> UnorderedAccessViewPtr;
 typedef CComPtr<ID3D11Resource> ResourcePtr;
@@ -243,12 +245,14 @@ typedef CComPtr<ID3D11DomainShader> DomainShaderPtr;
 typedef CComPtr<ID3D11ComputeShader> ComputeShaderPtr;
 typedef CComPtr<ID3D11ShaderReflection> ShaderReflectionPtr;
 typedef CComPtr<ID3D11SamplerState> SamplerStatePtr;
+typedef ID3D11SamplerState* SamplerStateRawPtr;
 typedef CComPtr<ID3D11Texture2D> Texture2DPtr;
 typedef CComPtr<ID3D11Texture1D> Texture1DPtr;
 
 typedef CComPtr<ID3DX11Effect> EffectPtr;
 typedef CComPtr<ID3D11InputLayout> InputLayoutPtr;
 typedef CComPtr<ID3D11Buffer> BufferPtr;
+typedef ID3D11Buffer* BufferRawPtr;
 
 typedef CComPtr<ID3D11Device> DevicePtr;
 typedef CComPtr<ID3D11DeviceContext> DeviceContextPtr;

@@ -92,8 +92,8 @@ D3DApp::~D3DApp()
 	ReleaseCOM(mDepthStencilView);
 	ReleaseCOM(mSwapChain);
 	ReleaseCOM(mDepthStencilBuffer);
-	ReleaseCOM(md3dDevice);
-	ReleaseCOM(md3dDeviceContext);
+	ReleaseCOMPtr(md3dDevice);
+	ReleaseCOMPtr(md3dDeviceContext);
 	//ReleaseCOM(mFont);	// @TODO: remove when done testing
 	mSpriteBatch.reset();
 	mFont.reset();
