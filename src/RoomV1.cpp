@@ -18,48 +18,48 @@ void RoomV1::initVertexBuffer()
 
 	// define the room vertices
 	// Floor: Observe we tile texture coordinates.
-	mVertexList[0] = TextureVertex(-7.5f, 0.0f, -10.0f, 0.0f, 1.0f, 0.0f, 0.0f, 4.0f);
-	mVertexList[1] = TextureVertex(-7.5f, 0.0f,   0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f);
-	mVertexList[2] = TextureVertex( 7.5f, 0.0f,   0.0f, 0.0f, 1.0f, 0.0f, 4.0f, 0.0f);
+	mVertexList[0] = Vertex(-7.5f, 0.0f, -10.0f, 0.0f, 1.0f, 0.0f, 0.0f, 4.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f);
+	mVertexList[1] = Vertex(-7.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0);
+	mVertexList[2] = Vertex(7.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 4.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0);
 	
-	mVertexList[3] = TextureVertex(-7.5f, 0.0f, -10.0f, 0.0f, 1.0f, 0.0f, 0.0f, 4.0f);
-	mVertexList[4] = TextureVertex( 7.5f, 0.0f,   0.0f, 0.0f, 1.0f, 0.0f, 4.0f, 0.0f);
-	mVertexList[5] = TextureVertex( 7.5f, 0.0f, -10.0f, 0.0f, 1.0f, 0.0f, 4.0f, 4.0f);
+	mVertexList[3] = Vertex(-7.5f, 0.0f, -10.0f, 0.0f, 1.0f, 0.0f, 0.0f, 4.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0);
+	mVertexList[4] = Vertex(7.5f, 0.0f, 0.0f, 0.0f, 1.0f, 0.0f, 4.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0);
+	mVertexList[5] = Vertex(7.5f, 0.0f, -10.0f, 0.0f, 1.0f, 0.0f, 4.0f, 4.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0);
 
 	// Wall: Observe we tile texture coordinates, and that we
 	// leave a gap in the middle for the mirror.
-	mVertexList[6]  = TextureVertex(-7.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 2.0f);
-	mVertexList[7]  = TextureVertex(-7.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f);
-	mVertexList[8]  = TextureVertex(-2.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 2.0f, 0.0f);
+	mVertexList[6] = Vertex(-7.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0);
+	mVertexList[7] = Vertex(-7.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0);
+	mVertexList[8] = Vertex(-2.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0);
 	
-	mVertexList[9]  = TextureVertex(-7.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 2.0f);
-	mVertexList[10] = TextureVertex(-2.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 2.0f, 0.0f);
-	mVertexList[11] = TextureVertex(-2.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 2.0f, 2.0f);
+	mVertexList[9] = Vertex(-7.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0);
+	mVertexList[10] = Vertex(-2.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0);
+	mVertexList[11] = Vertex(-2.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 2.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0);
 
-	mVertexList[12] = TextureVertex(2.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 2.0f);
-	mVertexList[13] = TextureVertex(2.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f);
-	mVertexList[14] = TextureVertex(7.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 2.0f, 0.0f);
+	mVertexList[12] = Vertex(2.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0);
+	mVertexList[13] = Vertex(2.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0);
+	mVertexList[14] = Vertex(7.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0);
 	
-	mVertexList[15] = TextureVertex(2.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 2.0f);
-	mVertexList[16] = TextureVertex(7.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 2.0f, 0.0f);
-	mVertexList[17] = TextureVertex(7.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 2.0f, 2.0f);
+	mVertexList[15] = Vertex(2.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0);
+	mVertexList[16] = Vertex(7.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0);
+	mVertexList[17] = Vertex(7.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 2.0f, 2.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0);
 
-	mVertexList[18] = TextureVertex(-7.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f);
-	mVertexList[19] = TextureVertex(-7.5f, 6.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f);
-	mVertexList[20] = TextureVertex( 7.5f, 6.0f, 0.0f, 0.0f, 0.0f, -1.0f, 6.0f, 0.0f);
+	mVertexList[18] = Vertex(-7.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0);
+	mVertexList[19] = Vertex(-7.5f, 6.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0);
+	mVertexList[20] = Vertex(7.5f, 6.0f, 0.0f, 0.0f, 0.0f, -1.0f, 6.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0);
 	
-	mVertexList[21] = TextureVertex(-7.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f);
-	mVertexList[22] = TextureVertex( 7.5f, 6.0f, 0.0f, 0.0f, 0.0f, -1.0f, 6.0f, 0.0f);
-	mVertexList[23] = TextureVertex( 7.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 6.0f, 1.0f);
+	mVertexList[21] = Vertex(-7.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0);
+	mVertexList[22] = Vertex(7.5f, 6.0f, 0.0f, 0.0f, 0.0f, -1.0f, 6.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0);
+	mVertexList[23] = Vertex(7.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 6.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0);
 
 	// Mirror
-	mVertexList[24] = TextureVertex(-2.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f);
-	mVertexList[25] = TextureVertex(-2.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f);
-	mVertexList[26] = TextureVertex( 2.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 1.0f, 0.0f);
+	mVertexList[24] = Vertex(-2.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0);
+	mVertexList[25] = Vertex(-2.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0);
+	mVertexList[26] = Vertex(2.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0);
 	
-	mVertexList[27] = TextureVertex(-2.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f);
-	mVertexList[28] = TextureVertex( 2.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 1.0f, 0.0f);
-	mVertexList[29] = TextureVertex( 2.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 1.0f, 1.0f);
+	mVertexList[27] = Vertex(-2.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 0.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0);
+	mVertexList[28] = Vertex(2.5f, 4.0f, 0.0f, 0.0f, 0.0f, -1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0);
+	mVertexList[29] = Vertex(2.5f, 0.0f, 0.0f, 0.0f, 0.0f, -1.0f, 1.0f, 1.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0f, 0.0);
 }
 
 // func to init index buffer (leave blank)
@@ -84,7 +84,7 @@ void RoomV1::init(ID3D11Device *device, float scale)
 	// create the vertex buffer description
 	D3D11_BUFFER_DESC vertexBufferDesc;
 	vertexBufferDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	vertexBufferDesc.ByteWidth = ObjectV2::mNumVertices * sizeof(TextureVertex);
+	vertexBufferDesc.ByteWidth = ObjectV2::mNumVertices * sizeof(Vertex);
 	vertexBufferDesc.CPUAccessFlags = 0;
 	vertexBufferDesc.MiscFlags = 0;
 	vertexBufferDesc.Usage = D3D11_USAGE_IMMUTABLE;
@@ -110,7 +110,7 @@ void RoomV1::drawRoom(ID3DX11EffectPass *pass,
 {
 	// draw the floor of the room
 	UINT vertexCount = 6, startLocation = 0;
-	const UINT stride = sizeof(TextureVertex), offset = 0;
+	const UINT stride = sizeof(Vertex), offset = 0;
 	diffuseVar->SetResource(floorRV);
 
 	ID3D11DeviceContext *pDeviceContext;
@@ -135,7 +135,7 @@ void RoomV1::drawRoom(const ShaderResourceViewPtr &wallRV,
 {
 	// draw the floor of the room
 	UINT vertexCount = 6, startLocation = 0;
-	const UINT stride = sizeof(TextureVertex), offset = 0;
+	const UINT stride = sizeof(Vertex), offset = 0;
 	//diffuseVar->SetResource(floorRV);
 
 	// get the immediate rendering context and bind the vertex buffer to the input assembler stage
@@ -160,7 +160,7 @@ void RoomV1::drawFloor()
 {
 	// draw the floor of the room
 	const UINT vertexCount = 6, startLocation = 0;
-	const UINT stride = sizeof(TextureVertex), offset = 0;
+	const UINT stride = sizeof(Vertex), offset = 0;
 	//diffuseVar->SetResource(floorRV);
 
 	// get the immediate rendering context and bind the vertex buffer to the input assembler stage
@@ -190,7 +190,7 @@ void RoomV1::drawMirror(ID3DX11EffectPass *pass, const EffectShaderResourceVaria
 {
 	// draw the mirror
 	UINT vertexCount = 6, startLocation = 24;
-	const UINT stride = sizeof(TextureVertex), offset = 0;
+	const UINT stride = sizeof(Vertex), offset = 0;
 	mirrorVar->SetResource(mirrorRV);
 
 	ID3D11DeviceContext *pDeviceContext;
@@ -206,7 +206,7 @@ void RoomV1::drawMirror(const ShaderResourceViewPtr &mirrorRV, const UINT mirror
 {
 	// draw the mirror
 	UINT vertexCount = 6, startLocation = 24;
-	const UINT stride = sizeof(TextureVertex), offset = 0;
+	const UINT stride = sizeof(Vertex), offset = 0;
 	//mirrorVar->SetResource(mirrorRV);
 
 	// get the immediate rendering context, bind the vertex buffer to the input assembler stage, bind the mirrorRV at the given bind point and draw the mirror
@@ -223,7 +223,7 @@ void RoomV1::drawMirror()
 {
 	// draw the mirror
 	const UINT vertexCount = 6, startLocation = 24;
-	const UINT stride = sizeof(TextureVertex), offset = 0;
+	const UINT stride = sizeof(Vertex), offset = 0;
 	//mirrorVar->SetResource(mirrorRV);
 
 	// get the immediate rendering context, bind the vertex buffer to the input assembler stage, bind the mirrorRV at the given bind point and draw the mirror

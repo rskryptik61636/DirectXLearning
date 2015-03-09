@@ -5,7 +5,7 @@
 
 #include "ObjectV2.h"
 
-class RoomV1 : public ObjectV2<TextureVertex>
+class RoomV1 : public ObjectV2<Vertex>
 {
 public:
 	RoomV1();
