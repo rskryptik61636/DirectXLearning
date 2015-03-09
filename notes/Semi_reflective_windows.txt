@@ -94,6 +94,31 @@ Semi reflective windows
 		- It may make sense to keep the global variables within each shader file for now because we don't want cross contamination caused by having them in header files.
 		
 		- Onwards to writing the basic shading classes...
+			- Convenience functions to get the byte offset and byte size of constant buffer variables would be helpful.
+			
+			- A copy method which uses the afore mentioned convenience functions to copy data into a mapped subresource would be useful as well.
+			
+			- Actually, would make more sense if the copy methods were part of the constant buffer class and if it had map and unmap functions as well so that clients would not have
+			  to create a D3D11_MAPPED_SUBRESOURCE object in the first place.
+			  
+			- Would be useful to have a flag to assert against to ensure that the constant buffer has been mapped before attempting to set any data.
+			
+			- DXShaderBase's createConstantBuffer would work nicely as ShaderConstantBuffer's ctor.
+			
+			- Think have realized something here, it looks like we might be able to not have to create concrete implementations for each shader (as was the initial fear when designing
+			  the shader class hierarchy).
+			  
+			- The whole argument for creating concrete implementations was so that constant buffer setting code could be reused but if all that code is moved into the constant buffer
+			  class, we've essentially solved the problem!!!
+			  
+			- Now we can have just bind(Shader/ConstantBuffer/Resources/Samplers) pure virtual functions that each shader class will have to implement. The apply method can be removed.
+			
+			- The structured buffer struct will probably need the same interfaces as the constant buffer struct.
+			
+		- Moving constructShaderPath to DXShaderUtils.h so that it can be accessed by applications.
+		
+		- Gah! The device object has always been a raw ID3D11Device, yours truly has never bothered to change it a DevicePtr object! :D
+			- Now or never as they say... Should be able to simply change the type and most clients shouldn't except for the ones which expect a raw object.
 	
 	- Vertex layout?
 		- Whatever fits the wall and mirror room objects.
@@ -102,6 +127,13 @@ Semi reflective windows
 	
 	- Scene objects?
 		- Consider modifying the RoomV1 class a bit so that the vertex/index buffer info is exposed such that the pipeline stage binding and the drawing can be handled by the app.
+			- We might need to create another version of the room class which works with the complete vertex type for backward compatibility's sake. 
+			
+			- The other option is to just change the vertex type to complete vertex and break existing apps which use the RoomV1 class (which is only one that we don't really care about anymore).
+			
+			- Going with the latter as it involves less work :D 
+			
+			- That was easy enough...
 		
 		- The current method of having the aforementioned tasks happen inside the object class seems a bit restrictive and cumbersome.
 		
@@ -116,3 +148,5 @@ Semi reflective windows
 			- Draw each object individually or in groups as necessary (wall, floor, room)
 			
 		- The SceneBuilder class can actually be expanded upon. It already has quite a bit of functionality implemented.
+		
+		- For now, let's look at one of the scene files and see what we need for our particular scene...
