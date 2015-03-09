@@ -381,6 +381,10 @@ void SceneBuilder::init()
 {
 	// read the scene file's contents into a string
 	std::ifstream sceneFile(m_strSceneFilePath.c_str());
+	if (!sceneFile.is_open())
+	{
+		throw std::exception(std::string("Unable to open " + m_strSceneFilePath).c_str());
+	}
 	sceneFile.seekg(0, std::ios::end);
 	m_strSceneFileContents.reserve(static_cast<std::size_t>(sceneFile.tellg()));
 	sceneFile.seekg(0, std::ios::beg);
