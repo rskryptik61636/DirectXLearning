@@ -88,6 +88,12 @@ struct ShaderConstantBuffer : public ShaderVar
 		return bindDesc.BindPoint;
 	}
 
+	// Accessor method for the buffer's raw ptr.
+	const BufferRawPtr buffer() const
+	{
+		return pBuffer.p;
+	}
+
 	// Map the constant buffer to system memory.
 	void map();
 
