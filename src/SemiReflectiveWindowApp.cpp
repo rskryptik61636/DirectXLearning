@@ -72,7 +72,8 @@ void SemiReflectiveWindowApp::drawScene()
 void SemiReflectiveWindowApp::createResources()
 {
 	// load the required textures
-	const wpath textureRoot = L"N:\\DirectXLearning\\textures\\";	// @TODO: needs to be loaded from a root config file
+	//const wpath textureRoot = L"N:\\DirectXLearning\\textures\\";	// @TODO: needs to be loaded from a root config file
+	const wpath textureRoot(m_pSceneBuilder->getTextureRootW());
 
 	const wpath crateTex = textureRoot / wpath(L"WoodCrate02.dds");
 	HR(DirectX::CreateDDSTextureFromFile(md3dDevice, crateTex.file_string().c_str(), 0, &m_pCrateRV.p));
@@ -152,6 +153,9 @@ void SemiReflectiveWindowApp::buildShaders()
 // Define to build the vertex layout which will be bound to the input assembly stage
 void SemiReflectiveWindowApp::buildVertexLayouts() 
 {
+	// Use the vertex layout of the basic shading VS.
+	m_pVertexLayout = m_pvsBasic->inputLayout();
+
 	// TODO: Add implementation here.
 }
 
