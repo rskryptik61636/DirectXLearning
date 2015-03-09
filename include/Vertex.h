@@ -65,6 +65,54 @@ struct SimpleVertex
 
 struct Vertex //: public SimpleVertex
 {
+	Vertex()	{}
+
+	Vertex(
+		DXVector3 pos,
+		DXVector3 norm,
+		DXVector2 tex,
+		DXVector3 tan,
+		DXVector3 bin,
+		DXColor col)
+		: position(pos),
+		normal(norm),
+		texCoord(tex),
+		tangent(tan),
+		binormal(bin),
+		color(col)
+	{}
+
+	// Out of order ctor to accommodate one client who was initializing it this way.
+	Vertex(
+		DXVector3 pos,
+		DXVector3 norm,
+		DXVector3 tan,
+		DXVector3 bin,
+		DXVector2 tex,
+		DXColor col)
+		: position(pos),
+		normal(norm),
+		texCoord(tex),
+		tangent(tan),
+		binormal(bin),
+		color(col)
+	{}
+
+	Vertex(
+		float posx, float posy, float posz,
+		float normx, float normy, float normz,
+		float texx, float texy,
+		float tanx, float tany, float tanz,
+		float binx, float biny, float binz,
+		float colr, float colg, float colb, float cola)
+		: position(posx, posy, posz),
+		normal(normx, normy, normz),
+		texCoord(texx, texy),
+		tangent(tanx, tany, tanz),
+		binormal(binx, biny, binz),
+		color(colr, colg, colb, cola)
+	{}
+
 	DXVector3 position;
 	DXVector3 normal;
 	DXVector2 texCoord;
