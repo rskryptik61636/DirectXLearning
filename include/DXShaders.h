@@ -247,7 +247,7 @@ public:
 	virtual ~DXVertexShader();
 
 	// Accessor function to access the input layout
-	const InputLayoutPtr& getInputLayout()	const	{ return m_pInputLayout; }
+	const InputLayoutPtr& inputLayout()	const	{ return m_pInputLayout; }
 
 	// Binds the shader to the pipeline.
 	void bindShader();
