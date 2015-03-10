@@ -68,7 +68,11 @@ struct ShaderConstantBuffer : public ShaderVar
 	{}
 
 	// Param ctor, handles init.
-	ShaderConstantBuffer(const std::string &bufName, const DevicePtr &pDevice, const DeviceContextPtr& pDC, const BlobPtr &pShaderByteCode);
+	ShaderConstantBuffer(
+		const std::string &bufName, 
+		const DevicePtr &pDevice, 
+		const DeviceContextPtr& pDC, 
+		const BlobPtr &pShaderByteCode);
 
 	// Accessor method for the byte offset of a variable.
 	const UINT varByteOffset(const std::string &name) const
@@ -136,11 +140,147 @@ template<typename T>
 struct ShaderStructuredBuffer : public ShaderVar
 {
 	// Default ctor
-	ShaderStructuredBuffer() : ShaderVar(), pBuffer()	{}
+	ShaderStructuredBuffer() : 
+		ShaderVar(), 
+		pBuffer(),
+		pDevice(),
+		pDeviceContext()
+	{}
+
+	// Param ctor, handles init.
+	ShaderStructuredBuffer(
+		const std::string &bufName,
+		const DevicePtr &pDev,
+		const DeviceContextPtr& pDC,
+		const BlobPtr &pShaderBlob,
+		const UINT nElements,
+		const UINT bindFlags,
+		const bool bIsDynamic = true,
+		const T* pInitData = NULL,
+		const bool bAppendConsume = false);// : 
+	//	ShaderVar(),
+	//	pDevice(pDev),
+	//	pDeviceContext(pDC)
+	//{
+	//	// reflect the shader and get the structured buffer bufName's info
+	//	ShaderReflectionPtr pReflector;
+	//	HR(D3DReflect(pShaderBlob->GetBufferPointer(), pShaderBlob->GetBufferSize(), IID_ID3D11ShaderReflection, reinterpret_cast<void**>(&pReflector.p)));
+
+	//	ShaderBufferDesc structuredBufDesc;
+	//	ShaderConstantBufferReflectorPtr pConstBuf = pReflector->GetConstantBufferByName(bufName.c_str());
+	//	HR(pConstBuf->GetDesc(&structuredBufDesc));
+
+	//	// init the constant buffer with the binding info
+	//	ShaderInputBindDesc structuredBufBindDesc;
+	//	HR(pReflector->GetResourceBindingDescByName(bufName.c_str(), &structuredBufBindDesc));
+
+	//	// init the constant buffer instance
+	//	strName = bufName;
+	//	bindDesc = structuredBufBindDesc;
+
+	//	// close the reflection interface
+	//	pReflector.Release();
+
+	//	// instantiate the structured buffer iff the no. of elements is > 0
+	//	if (nElements > 0)
+	//	{
+	//		//const bool bIsDynamic(true);	// NOTE: revise if necessary (now a default param with the same value, 28-Mar-2014)
+	//		pBuffer.reset(new StructuredBuffer<T>(pDevice, nElements, pInitData, bindFlags, bIsDynamic, bAppendConsume));
+	//	}
+	//	/*else
+	//		structuredBuffer.pBuffer.reset();*/
+	//}
+
+	// Set the structured buffer's contents.
+	void setBuffer(const std::vector<T> &elements);
+
+	// Accessor for the structured buffer's shader resource view.
+	const ShaderResourceViewRawPtr srv() const
+	{
+		return pBuffer->GetShaderResource();
+	}
+
+	// Accessor for the structured buffer's unordered access view.
+	const UnorderedAccessViewRawPtr uav() const
+	{
+		return pBuffer->GetUnorderedAccessView();
+	}
+
+	// Accessor for the structured buffer's raw pointer.
+	const BufferRawPtr buffer() const
+	{
+		return pBuffer->GetBuffer();
+	}
 
 	std::unique_ptr<StructuredBuffer<T>> pBuffer;
+	DevicePtr pDevice;
+	DeviceContextPtr pDeviceContext;
 
 };	// end of struct ShaderStructuredBuffer
+
+// NOTE: As much as one would like, alas the following is not possible as of this writing (10-Mar-2015)
+//template<typename T>
+//typedef std::unique_ptr<ShaderStructuredBuffer<T>> ShaderStructuredBufferPtr<T>;
+
+// Param ctor, handles init.
+template<typename T>
+ShaderStructuredBuffer<T>::ShaderStructuredBuffer(
+	const std::string &bufName,
+	const DevicePtr &pDev,
+	const DeviceContextPtr& pDC,
+	const BlobPtr &pShaderBlob,
+	const UINT nElements,
+	const UINT bindFlags,
+	const bool bIsDynamic /*= true*/,
+	const T* pInitData /*= NULL*/,
+	const bool bAppendConsume /*= false*/) :
+	ShaderVar(),
+	pDevice(pDev),
+	pDeviceContext(pDC)
+{
+	// reflect the shader and get the structured buffer bufName's info
+	ShaderReflectionPtr pReflector;
+	HR(D3DReflect(pShaderBlob->GetBufferPointer(), pShaderBlob->GetBufferSize(), IID_ID3D11ShaderReflection, reinterpret_cast<void**>(&pReflector.p)));
+
+	ShaderBufferDesc structuredBufDesc;
+	ShaderConstantBufferReflectorPtr pConstBuf = pReflector->GetConstantBufferByName(bufName.c_str());
+	HR(pConstBuf->GetDesc(&structuredBufDesc));
+
+	// init the constant buffer with the binding info
+	ShaderInputBindDesc structuredBufBindDesc;
+	HR(pReflector->GetResourceBindingDescByName(bufName.c_str(), &structuredBufBindDesc));
+
+	// init the constant buffer instance
+	strName = bufName;
+	bindDesc = structuredBufBindDesc;
+
+	// close the reflection interface
+	pReflector.Release();
+
+	// instantiate the structured buffer iff the no. of elements is > 0
+	if (nElements > 0)
+	{
+		//const bool bIsDynamic(true);	// NOTE: revise if necessary (now a default param with the same value, 28-Mar-2014)
+		pBuffer.reset(new StructuredBuffer<T>(pDevice, nElements, pInitData, bindFlags, bIsDynamic, bAppendConsume));
+	}
+	/*else
+	structuredBuffer.pBuffer.reset();*/
+}
+
+// Set the structured buffer's contents.
+template<typename T>
+void ShaderStructuredBuffer<T>::setBuffer(const std::vector<T> &elements)
+{
+	// Update the structured buffer iff there is atleast one element
+	const std::size_t nElements(elements.size());
+	if (nElements > 0)
+	{
+		T* pBuffer = pBuffer->MapDiscard(pDeviceContext);
+		for (std::size_t i = 0; i < nElements; ++i)
+			pBuffer[i] = elements[i];
+		pBuffer->Unmap(pDeviceContext);
+	}
+}
 
 // Shader resource info
 struct ShaderResource : public ShaderVar
