@@ -60,6 +60,17 @@ struct SLight
 // Updated with default param structs for parallel, point and spot lights (Rohit S, Feb-16-2014)
 struct ParallelLightParams
 {
+	// Default ctor.
+	ParallelLightParams() : 
+		dir(0.57735f, -0.57735f, 0.57735f),
+		ambient(0.4f, 0.4f, 0.4f, 1.0f),
+		diffuse(WHITE),
+		specular(WHITE),
+		radius(0.0f),
+		angle(0.0f),
+		animationSpeed(0.0f)
+	{}
+
 	DXVector3 dir;
 	DXColor ambient;
 	DXColor diffuse;
