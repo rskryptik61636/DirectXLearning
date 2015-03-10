@@ -177,10 +177,12 @@ void RoomV1::drawWall()
 {
 	//// draw the wall of the room
 	const UINT vertexCount = 18, startLocation = 6;
+	const UINT stride = sizeof(Vertex), offset = 0;
 	//diffuseVar->SetResource(wallRV);
 	// get the immediate rendering context and bind the vertex buffer to the input assembler stage
 	ID3D11DeviceContext *pDeviceContext;
 	ObjectV2::mD3dDevice->GetImmediateContext(&pDeviceContext);
+	pDeviceContext->IASetVertexBuffers(0, 1, &mVb, &stride, &offset);
 	pDeviceContext->Draw(vertexCount, startLocation);
 	pDeviceContext->Release();	// release as GetImmediateContext does a deep copy of the rendering context
 }
