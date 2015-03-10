@@ -150,3 +150,6 @@ Semi reflective windows
 		- The SceneBuilder class can actually be expanded upon. It already has quite a bit of functionality implemented.
 		
 		- For now, let's look at one of the scene files and see what we need for our particular scene...
+		
+	- HAZZAH!!! A wall was rendered!
+		- The design of the ObjectV2 and DXApp classes are overly complicated though. Need to simplify them...

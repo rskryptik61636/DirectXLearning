@@ -94,8 +94,12 @@ protected:
 	// Room textures.
 	ShaderResourceViewPtr m_pCrateRV, m_pFloorRV, m_pMirrorRV, m_pSpecRV, m_pWallRV;
 
-	// Light source.
-	Light m_parallelLight;
+	// Sampler states.
+	SamplerStatePtr m_pSampler;
+
+	// Light sources.
+	//Light m_parallelLight;
+	std::vector<SLight> m_parallelLights;
 
 	// Basic shaders.
 	DXVertexShaderPtr m_pvsBasic;
@@ -104,6 +108,9 @@ protected:
 	// Constant buffers.
 	ShaderConstantBufferPtr m_pcbPerObject;
 	ShaderConstantBufferPtr m_pcbPerFrame;
+
+	// Structured buffers.
+	std::unique_ptr<ShaderStructuredBuffer<SLight>> m_sbParallelLights;
 
 	// @TODO: add protected members here
 

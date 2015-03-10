@@ -2,6 +2,8 @@
 
 #include "SemiReflectiveWindowApp.h"
 
+#include "SamplerStateMaker.h"
+
 // param ctor
 // TODO: Initialize additional members as necessary
 SemiReflectiveWindowApp::SemiReflectiveWindowApp(HINSTANCE hInstance, const std::string strSceneFilePath) 
@@ -90,11 +92,28 @@ void SemiReflectiveWindowApp::createResources()
 	const wpath wallTex = textureRoot / wpath(L"brick01.dds");
 	HR(DirectX::CreateDDSTextureFromFile(md3dDevice, wallTex.file_string().c_str(), 0, &m_pWallRV.p));
 
-	// init parallel light
-	m_parallelLight.dir = DXVector3(0.57735f, -0.57735f, 0.57735f);
-	m_parallelLight.ambient = DXColor(0.4f, 0.4f, 0.4f, 1.0f);
-	m_parallelLight.diffuse = WHITE; // DXColor(1.0f, 1.0f, 1.0f, 1.0f);
-	m_parallelLight.specular = WHITE; // DXColor(1.0f, 1.0f, 1.0f, 1.0f);
+	// init parallel lights
+	ParallelLightParams parallelDefaultParams;
+	m_pSceneBuilder->buildParallelLights<SLight>(
+		parallelDefaultParams,
+		m_parallelLights);
+
+	// Create the structured buffer for the parallel lights.
+	const bool bDynamic(true);
+	m_sbParallelLights.reset(
+		new ShaderStructuredBuffer<SLight>(
+		"gParallelLights",
+		md3dDevice,
+		md3dDeviceContext,
+		m_ppsBasic->byteCode(),
+		m_parallelLights.size(),
+		D3D11_BIND_SHADER_RESOURCE,
+		bDynamic,
+		m_parallelLights.data()));
+	
+	// Create a trilinear sampler state.
+	SamplerStateMaker samplerMaker;
+	samplerMaker.makeTriLinear(md3dDevice, m_pSampler);
 
 	// TODO: Add implementation here.
 }
@@ -111,6 +130,81 @@ void SemiReflectiveWindowApp::createObjects()
 // Meat of the drawScene method, this is where the scene rendering is implemented.
 void SemiReflectiveWindowApp::drawObjects()
 {
+	// Set the input layout and primitive topology.
+	md3dDeviceContext->IASetInputLayout(m_pVertexLayout.p);
+	md3dDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+
+	// Setup to draw the wall.
+
+	// Set the vertex shader.
+	m_pvsBasic->bindShader();
+
+	// Set the vertex shader constants.
+	DXMatrix world(DXMatrix::Identity()), wvp(world * m_pCamera->view() * m_pCamera->proj()), tex(DXMatrix::Identity());
+	m_pcbPerObject->map();
+	m_pcbPerObject->setMatrix("gWorld", world);
+	m_pcbPerObject->setMatrix("gWorldInvTrans", world);
+	m_pcbPerObject->setMatrix("gWVP", wvp);
+	m_pcbPerObject->setMatrix("gTexMtx", tex);
+	m_pcbPerObject->unmap();
+	//const std::array<BufferRawPtr, 1> ppBuffers = { m_pcbPerObject->buffer() };
+	std::array<BufferRawPtr, 1> ppBuffers = { m_pcbPerObject->buffer() };
+	m_pvsBasic->bindContantBuffers(
+		m_pcbPerObject->bindPoint(),
+		ppBuffers.size(),
+		ppBuffers.data());
+
+	// Set the pixel shader.
+	m_ppsBasic->bindShader();
+
+	// Set the pixel shader constants.
+	const std::size_t nParallelLights(m_parallelLights.size()), nPointLights(0), nSpotLights(0);
+	const DXVector3 eyePosW(m_pCamera->eyePosW());
+	m_pcbPerFrame->map();
+	m_pcbPerFrame->setDatum<std::size_t>("nParallelLights", &nParallelLights);
+	m_pcbPerFrame->setDatum<std::size_t>("nPointLights", &nPointLights);
+	m_pcbPerFrame->setDatum<std::size_t>("nSpotLights", &nSpotLights);
+	m_pcbPerFrame->setDatum<DXVector3>("gEyePosW", &eyePosW);
+	m_pcbPerFrame->unmap();
+
+	ppBuffers[0] = m_pcbPerFrame->buffer();
+	m_ppsBasic->bindContantBuffers(
+		m_pcbPerFrame->bindPoint(),
+		ppBuffers.size(),
+		ppBuffers.data());
+
+	// Set the pixel shader resources.
+	std::array<ShaderResourceViewRawPtr, 5> ppResources = {
+		m_sbParallelLights->srv(),
+		nullptr,
+		nullptr,
+		m_pWallRV.p,
+		m_pSpecRV.p };
+	m_ppsBasic->bindResources(
+		0,
+		ppResources.size(),
+		ppResources.data());
+
+	// Set the pixel shader sampler states.
+	std::array<SamplerStateRawPtr, 1> ppSamplers = { m_pSampler.p };
+	m_ppsBasic->bindSamplers(
+		0,
+		ppSamplers.size(),
+		ppSamplers.data());
+
+	// Draw the wall.
+	m_pRoom->drawWall();
+
+	// Set the wall's texture and re-bind the pixel shader resources.
+	ppResources[3] = m_pFloorRV.p;
+	m_ppsBasic->bindResources(
+		0,
+		ppResources.size(),
+		ppResources.data());
+
+	// Draw the floor.
+	m_pRoom->drawFloor();
+		
 	// TODO: Add implementation here.
 }
 
