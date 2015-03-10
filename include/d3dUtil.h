@@ -228,6 +228,7 @@ typedef CComPtr<ID3D11ShaderResourceView> ShaderResourceViewPtr;
 typedef ID3D11ShaderResourceView* ShaderResourceViewRawPtr;
 typedef CComPtr<ID3D11RenderTargetView> RenderTargetViewPtr;
 typedef CComPtr<ID3D11UnorderedAccessView> UnorderedAccessViewPtr;
+typedef ID3D11UnorderedAccessView* UnorderedAccessViewRawPtr;
 typedef CComPtr<ID3D11Resource> ResourcePtr;
 
 typedef ID3DX11EffectTechnique* EffectTechniquePtr;
