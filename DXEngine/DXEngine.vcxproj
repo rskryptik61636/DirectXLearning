@@ -168,6 +168,7 @@
     <None Include="ReadMe.txt" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\include\Box.h" />
     <ClInclude Include="..\include\ComplexQuad.h" />
     <ClInclude Include="..\include\d3dApp.h" />
     <ClInclude Include="..\include\d3dUtil.h" />
@@ -195,6 +196,7 @@
   <ItemGroup>
     <ClCompile Include="..\include\TangentQuad.cpp" />
     <ClCompile Include="..\src\BasicSphere.cpp" />
+    <ClCompile Include="..\src\Box.cpp" />
     <ClCompile Include="..\src\ComplexQuad.cpp" />
     <ClCompile Include="..\src\d3dApp.cpp" />
     <ClCompile Include="..\src\d3dUtil.cpp" />

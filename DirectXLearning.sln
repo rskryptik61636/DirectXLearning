@@ -68,6 +68,10 @@ EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "LightTileIntersectionTest", "LightTileIntersectionTest\LightTileIntersectionTest.vcxproj", "{0AE56AE6-DFA9-4FAB-9C79-4005AA3E6318}"
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "SemiReflectiveWindow", "SemiReflectiveWindow\SemiReflectiveWindow.vcxproj", "{3ED927F7-F27A-48B0-B062-DD17C32A5A00}"
+	ProjectSection(ProjectDependencies) = postProject
+		{33D3756E-8EAB-4574-9AC4-63FBBA5E0286} = {33D3756E-8EAB-4574-9AC4-63FBBA5E0286}
+		{3E630678-D2A8-4F6B-9C79-2C0A5BF9ACF2} = {3E630678-D2A8-4F6B-9C79-2C0A5BF9ACF2}
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
