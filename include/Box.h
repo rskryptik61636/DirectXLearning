@@ -11,16 +11,19 @@ public:
 	Box();
 	~Box();
 
-	void init(ID3D11Device *device, float scale);
+	void init(const DevicePtr &device, float scale);
+	void setIndexAndVertexBuffers();
 	void draw();
 
 private:
 	DWORD mNumVertices;
 	DWORD mNumFaces;
 
-	ID3D11Device *mD3dDevice;	// d3d device
-	ID3D11Buffer *mVb;			// vertex buffer
-	ID3D11Buffer *mIb;			// index buffer
+	DevicePtr mD3dDevice;	// d3d device
+	DeviceContextPtr mD3dDeviceContext;	// d3d device context
+	BufferPtr mVb;			// vertex buffer
+	BufferPtr mIb;			// index buffer
 };
+typedef std::unique_ptr<Box> BoxPtr;
 
 #endif

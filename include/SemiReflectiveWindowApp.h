@@ -12,6 +12,9 @@
 // Shader classes.
 #include "DXShaders.h"
 
+// Box class.
+#include "Box.h"
+
 // TODO: Add additional headers here.
 
 // App which implements a window that is mostly transparent but also slightly reflective in that it posesses slight mirror like properties.
@@ -90,6 +93,9 @@ protected:
 
 	// Room object.
 	RoomV1Ptr m_pRoom;
+
+	// Box object.
+	BoxPtr m_pBox;
 
 	// Room textures.
 	ShaderResourceViewPtr m_pCrateRV, m_pFloorRV, m_pMirrorRV, m_pSpecRV, m_pWallRV;

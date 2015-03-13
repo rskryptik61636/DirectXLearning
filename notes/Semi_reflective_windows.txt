@@ -153,3 +153,30 @@ Semi reflective windows
 		
 	- HAZZAH!!! A wall was rendered!
 		- The design of the ObjectV2 and DXApp classes are overly complicated though. Need to simplify them...
+		
+	- Now to figure out how to draw the reflected box...
+		- One way is the approach used in the mirror app, i.e. reflect the box around the plane boundary and then draw the box in the mirror area via the stencil buffer.
+			- This is attractive actually as we might be able to turn off depth writes in combination with the stencil buffer restriction and have the reflected box's depth not interfere
+			  with the depth of the objects behind the wall.
+			  
+			- Look at what the different depth-stencil, blend and rasterizer states in the original mirror demo were used for:
+				- mirrorDSSDesc
+					- Stencil test enabled and set to always pass. Used when drawing the mirror.
+					
+				- mirrorBlendDesc
+					- Used to blend the reflected crate with the mirror's texture.
+					
+				- reflectDSSDesc
+					- Depth test always passes and no writes made to the depth buffer so that the reflected crate is visible through the mirror.
+					
+					- Stencil test passes iff the ref stencil value matches the current value on the stencil buffer. Since only the portion of the mirror that is covered by the reflected crate is
+					  set in the stencil buffer, this ensures that only the reflected crate will be visible in the mirror.
+					  
+					- Used when drawing the reflected crate.
+					
+				- reflectRSDesc
+					- CCW ordered triangles are considered front facing. This is used on the reflected crate since its face normals will be pointing the same direction as the original crate and
+					  we want the back facing triangles to be lit.
+					  
+			- Looks like the Box class doesn't have any valid normals, tangents, binormals or tex coords specified. May need to add them in...
+				- Let's use the GeometryGenerator class used to create the vertices in the TangentBox class.

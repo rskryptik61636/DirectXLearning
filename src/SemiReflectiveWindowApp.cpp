@@ -7,7 +7,7 @@
 // param ctor
 // TODO: Initialize additional members as necessary
 SemiReflectiveWindowApp::SemiReflectiveWindowApp(HINSTANCE hInstance, const std::string strSceneFilePath) 
-	: DXApp(hInstance, strSceneFilePath), m_pRoom(new RoomV1())
+	: DXApp(hInstance, strSceneFilePath), m_pRoom(new RoomV1()), m_pBox(new Box())
 {
 }
 
@@ -124,6 +124,9 @@ void SemiReflectiveWindowApp::createObjects()
 	// Init the room object.
 	m_pRoom->init(md3dDevice, 1.0f);
 
+	// Init the box object.
+	m_pBox->init(md3dDevice, 1.0f);
+
 	// TODO: Add implementation here.
 }
 
@@ -140,7 +143,8 @@ void SemiReflectiveWindowApp::drawObjects()
 	m_pvsBasic->bindShader();
 
 	// Set the vertex shader constants.
-	DXMatrix world(DXMatrix::Identity()), wvp(world * m_pCamera->view() * m_pCamera->proj()), tex(DXMatrix::Identity());
+	const DXMatrix viewProj(m_pCamera->view() * m_pCamera->proj());
+	DXMatrix world(DXMatrix::Identity()), wvp(world * viewProj), tex(DXMatrix::Identity());
 	m_pcbPerObject->map();
 	m_pcbPerObject->setMatrix("gWorld", world);
 	m_pcbPerObject->setMatrix("gWorldInvTrans", world);
@@ -195,15 +199,43 @@ void SemiReflectiveWindowApp::drawObjects()
 	// Draw the wall.
 	m_pRoom->drawWall();
 
-	// Set the wall's texture and re-bind the pixel shader resources.
-	ppResources[3] = m_pFloorRV.p;
+	// Set the wall's texture only and re-bind the pixel shader resources.
 	m_ppsBasic->bindResources(
-		0,
-		ppResources.size(),
-		ppResources.data());
+		3,
+		1,
+		&m_pFloorRV.p);
 
 	// Draw the floor.
 	m_pRoom->drawFloor();
+
+	// Set the box's vertex and index buffers.
+	m_pBox->setIndexAndVertexBuffers();
+
+	// Set the world transform for the box.
+	world = DXMatrix::CreateTranslation(DXVector3(-2,0,-2)) * DXMatrix::CreateScale(2.0f);
+	wvp = world * viewProj;
+	m_pcbPerObject->map();
+	m_pcbPerObject->setMatrix("gWorld", world);
+	m_pcbPerObject->setMatrix("gWorldInvTrans", world.Invert().Transpose());
+	m_pcbPerObject->setMatrix("gWVP", wvp);
+	m_pcbPerObject->setMatrix("gTexMtx", tex);
+	m_pcbPerObject->unmap();
+	//const std::array<BufferRawPtr, 1> ppBuffers = { m_pcbPerObject->buffer() };
+	//std::array<BufferRawPtr, 1> ppBuffers = { m_pcbPerObject->buffer() };
+	ppBuffers[0] = m_pcbPerObject->buffer();
+	m_pvsBasic->bindContantBuffers(
+		m_pcbPerObject->bindPoint(),
+		ppBuffers.size(),
+		ppBuffers.data());
+
+	// Set the box's texture only and re-bind the pixel shader resources.
+	m_ppsBasic->bindResources(
+		3,
+		1,
+		&m_pCrateRV.p);
+
+	// Draw the box.
+	m_pBox->draw();
 		
 	// TODO: Add implementation here.
 }
