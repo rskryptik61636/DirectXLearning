@@ -162,13 +162,12 @@ void SemiReflectiveWindowApp::drawObjects()
 	m_ppsBasic->bindShader();
 
 	// Set the pixel shader constants.
-	const std::size_t nParallelLights(m_parallelLights.size()), nPointLights(0), nSpotLights(0);
 	const DXVector3 eyePosW(m_pCamera->eyePosW());
 	m_pcbPerFrame->map();
-	m_pcbPerFrame->setDatum<std::size_t>("nParallelLights", &nParallelLights);
-	m_pcbPerFrame->setDatum<std::size_t>("nPointLights", &nPointLights);
-	m_pcbPerFrame->setDatum<std::size_t>("nSpotLights", &nSpotLights);
-	m_pcbPerFrame->setDatum<DXVector3>("gEyePosW", &eyePosW);
+	m_pcbPerFrame->setDatum<std::size_t>("nParallelLights", m_parallelLights.size());
+	m_pcbPerFrame->setDatum<std::size_t>("nPointLights", 0);
+	m_pcbPerFrame->setDatum<std::size_t>("nSpotLights", 0);
+	m_pcbPerFrame->setDatum<DXVector3>("gEyePosW", eyePosW);
 	m_pcbPerFrame->unmap();
 
 	ppBuffers[0] = m_pcbPerFrame->buffer();

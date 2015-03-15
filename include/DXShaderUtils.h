@@ -111,7 +111,7 @@ struct ShaderConstantBuffer : public ShaderVar
 	// Utility function to copy a shader constant into its mapped memory.
 	// WARNING: Should not be invoked unless the constant buffer has been mapped first.
 	template<typename T>
-	void setDatum(const std::string &varName, const T* pSrc);
+	void setDatum(const std::string &varName, const T &pSrc);
 
 	ShaderConstantBufferVariableInfo varsInfo;	// info about the constant buffer variables
 	BufferPtr pBuffer;							// constant buffer
@@ -125,13 +125,13 @@ typedef std::unique_ptr<ShaderConstantBuffer> ShaderConstantBufferPtr;
 
 // Utility function to copy a shader constant into its mapped memory.
 template<typename T>
-void ShaderConstantBuffer::setDatum(const std::string &varName, const T* pSrc)
+void ShaderConstantBuffer::setDatum(const std::string &varName, const T &pSrc)
 {
 	assert(bMapped);	// Ensure that the constant buffer has been mapped.
 
 	CopyMemory(
 		reinterpret_cast<BYTE*>(mappedData.pData) + varByteOffset(varName),
-		reinterpret_cast<const BYTE*>(pSrc),
+		reinterpret_cast<const BYTE*>(&pSrc),
 		varSizeInBytes(varName));
 }
 

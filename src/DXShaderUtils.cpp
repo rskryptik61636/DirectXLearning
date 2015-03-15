@@ -119,5 +119,5 @@ void ShaderConstantBuffer::unmap()
 // WARNING: Should not be invoked unless the constant buffer has been mapped first.
 void ShaderConstantBuffer::setMatrix(const std::string &varName, const DXMatrix &matrix)
 {
-	setDatum<DXMatrix>(varName, &(matrix.Transpose()));
+	setDatum<DXMatrix>(varName, matrix.Transpose());
 }
