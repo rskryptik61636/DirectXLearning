@@ -5,7 +5,7 @@
 // default ctor
 // the room has a total of 30 vertices and no faces and vertices/face are defined
 // -as we do not use indexed drawing to render the room
-RoomV1::RoomV1() : ObjectV2(30,0,0)		{} 
+RoomV1::RoomV1() : ObjectV2<Vertex>(30,0,0)		{} 
 
 // dtor
 RoomV1::~RoomV1()	{}
@@ -78,8 +78,9 @@ void RoomV1::init(ID3D11Device *device, float scale)
 	for(size_t i = 0; i < ObjectV2::mVertexList.size(); ++i)
 		ObjectV2::mVertexList[i].position *= vertexScale;
 
-	// set the D3D device
+	// set the D3D device and it's context.
 	ObjectV2::mD3dDevice = device;
+	mD3dDevice->GetImmediateContext(&mD3dDeviceContext.p);
 
 	// create the vertex buffer description
 	D3D11_BUFFER_DESC vertexBufferDesc;
@@ -113,18 +114,15 @@ void RoomV1::drawRoom(ID3DX11EffectPass *pass,
 	const UINT stride = sizeof(Vertex), offset = 0;
 	diffuseVar->SetResource(floorRV);
 
-	ID3D11DeviceContext *pDeviceContext;
-	ObjectV2::mD3dDevice->GetImmediateContext(&pDeviceContext);
-	pass->Apply(0, pDeviceContext);
-	pDeviceContext->IASetVertexBuffers(0, 1, &mVb, &stride, &offset);
-	pDeviceContext->Draw(vertexCount, startLocation);
+	pass->Apply(0, mD3dDeviceContext);
+	mD3dDeviceContext->IASetVertexBuffers(0, 1, &mVb, &stride, &offset);
+	mD3dDeviceContext->Draw(vertexCount, startLocation);
 
 	// draw the wall of the room
 	vertexCount = 18, startLocation = 6;
 	diffuseVar->SetResource(wallRV);
-	pass->Apply(0, pDeviceContext);
-	pDeviceContext->Draw(vertexCount, startLocation);
-	pDeviceContext->Release();	// release as GetImmediateContext does a deep copy of the rendering context
+	pass->Apply(0, mD3dDeviceContext);
+	mD3dDeviceContext->Draw(vertexCount, startLocation);
 }
 
 // function to draw the room
@@ -139,20 +137,17 @@ void RoomV1::drawRoom(const ShaderResourceViewPtr &wallRV,
 	//diffuseVar->SetResource(floorRV);
 
 	// get the immediate rendering context and bind the vertex buffer to the input assembler stage
-	ID3D11DeviceContext *pDeviceContext;
-	ObjectV2::mD3dDevice->GetImmediateContext(&pDeviceContext);
-	pDeviceContext->IASetVertexBuffers(0, 1, &mVb, &stride, &offset);
+	mD3dDeviceContext->IASetVertexBuffers(0, 1, &mVb, &stride, &offset);
 
 	// bind the wallRV to the pixel shader at the given bind point and draw the floor
-	pDeviceContext->PSSetShaderResources(floorBindPoint, 1, &floorRV.p);
-	pDeviceContext->Draw(vertexCount, startLocation);
+	mD3dDeviceContext->PSSetShaderResources(floorBindPoint, 1, &floorRV.p);
+	mD3dDeviceContext->Draw(vertexCount, startLocation);
 
 	//// draw the wall of the room
 	vertexCount = 18, startLocation = 6;
 	//diffuseVar->SetResource(wallRV);
-	pDeviceContext->PSSetShaderResources(wallBindPoint, 1, &wallRV.p);
-	pDeviceContext->Draw(vertexCount, startLocation);
-	pDeviceContext->Release();	// release as GetImmediateContext does a deep copy of the rendering context
+	mD3dDeviceContext->PSSetShaderResources(wallBindPoint, 1, &wallRV.p);
+	mD3dDeviceContext->Draw(vertexCount, startLocation);
 }
 
 // function to draw the floor
@@ -163,13 +158,11 @@ void RoomV1::drawFloor()
 	const UINT stride = sizeof(Vertex), offset = 0;
 	//diffuseVar->SetResource(floorRV);
 
-	// get the immediate rendering context and bind the vertex buffer to the input assembler stage
-	ID3D11DeviceContext *pDeviceContext;
-	ObjectV2::mD3dDevice->GetImmediateContext(&pDeviceContext);
-	pDeviceContext->IASetVertexBuffers(0, 1, &mVb, &stride, &offset);
+	// bind the vertex buffer to the input assembler stage
+	mD3dDeviceContext->IASetVertexBuffers(0, 1, &mVb, &stride, &offset);
 
 	// bind the wallRV to the pixel shader at the given bind point and draw the floor
-	pDeviceContext->Draw(vertexCount, startLocation);
+	mD3dDeviceContext->Draw(vertexCount, startLocation);
 }
 
 // function to draw the wall
@@ -178,13 +171,10 @@ void RoomV1::drawWall()
 	//// draw the wall of the room
 	const UINT vertexCount = 18, startLocation = 6;
 	const UINT stride = sizeof(Vertex), offset = 0;
-	//diffuseVar->SetResource(wallRV);
-	// get the immediate rendering context and bind the vertex buffer to the input assembler stage
-	ID3D11DeviceContext *pDeviceContext;
-	ObjectV2::mD3dDevice->GetImmediateContext(&pDeviceContext);
-	pDeviceContext->IASetVertexBuffers(0, 1, &mVb, &stride, &offset);
-	pDeviceContext->Draw(vertexCount, startLocation);
-	pDeviceContext->Release();	// release as GetImmediateContext does a deep copy of the rendering context
+	
+	// bind the vertex buffer to the input assembler stage
+	mD3dDeviceContext->IASetVertexBuffers(0, 1, &mVb, &stride, &offset);
+	mD3dDeviceContext->Draw(vertexCount, startLocation);
 }
 
 // function to draw the mirror
@@ -195,12 +185,9 @@ void RoomV1::drawMirror(ID3DX11EffectPass *pass, const EffectShaderResourceVaria
 	const UINT stride = sizeof(Vertex), offset = 0;
 	mirrorVar->SetResource(mirrorRV);
 
-	ID3D11DeviceContext *pDeviceContext;
-	ObjectV2::mD3dDevice->GetImmediateContext(&pDeviceContext);
-	pDeviceContext->IASetVertexBuffers(0, 1, &mVb, &stride, &offset);
-	pass->Apply(0, pDeviceContext);
-	pDeviceContext->Draw(vertexCount, startLocation);
-	pDeviceContext->Release();	// release as GetImmediateContext does a deep copy of the rendering context
+	mD3dDeviceContext->IASetVertexBuffers(0, 1, &mVb, &stride, &offset);
+	pass->Apply(0, mD3dDeviceContext);
+	mD3dDeviceContext->Draw(vertexCount, startLocation);
 }
 
 // function to draw the mirror
@@ -211,13 +198,10 @@ void RoomV1::drawMirror(const ShaderResourceViewPtr &mirrorRV, const UINT mirror
 	const UINT stride = sizeof(Vertex), offset = 0;
 	//mirrorVar->SetResource(mirrorRV);
 
-	// get the immediate rendering context, bind the vertex buffer to the input assembler stage, bind the mirrorRV at the given bind point and draw the mirror
-	ID3D11DeviceContext *pDeviceContext;
-	ObjectV2::mD3dDevice->GetImmediateContext(&pDeviceContext);
-	pDeviceContext->IASetVertexBuffers(0, 1, &mVb, &stride, &offset);
-	pDeviceContext->PSSetShaderResources(mirrorBindPoint, 1, &mirrorRV.p);
-	pDeviceContext->Draw(vertexCount, startLocation);
-	pDeviceContext->Release();	// release as GetImmediateContext does a deep copy of the rendering context
+	// bind the vertex buffer to the input assembler stage, bind the mirrorRV at the given bind point and draw the mirror
+	mD3dDeviceContext->IASetVertexBuffers(0, 1, &mVb, &stride, &offset);
+	mD3dDeviceContext->PSSetShaderResources(mirrorBindPoint, 1, &mirrorRV.p);
+	mD3dDeviceContext->Draw(vertexCount, startLocation);
 }
 
 // function to draw the mirror
@@ -226,12 +210,8 @@ void RoomV1::drawMirror()
 	// draw the mirror
 	const UINT vertexCount = 6, startLocation = 24;
 	const UINT stride = sizeof(Vertex), offset = 0;
-	//mirrorVar->SetResource(mirrorRV);
-
-	// get the immediate rendering context, bind the vertex buffer to the input assembler stage, bind the mirrorRV at the given bind point and draw the mirror
-	ID3D11DeviceContext *pDeviceContext;
-	ObjectV2::mD3dDevice->GetImmediateContext(&pDeviceContext);
-	pDeviceContext->IASetVertexBuffers(0, 1, &mVb, &stride, &offset);
-	pDeviceContext->Draw(vertexCount, startLocation);
-	pDeviceContext->Release();	// release as GetImmediateContext does a deep copy of the rendering context
+	
+	// bind the vertex buffer to the input assembler stage, bind the mirrorRV at the given bind point and draw the mirror
+	mD3dDeviceContext->IASetVertexBuffers(0, 1, &mVb, &stride, &offset);
+	mD3dDeviceContext->Draw(vertexCount, startLocation);
 }
