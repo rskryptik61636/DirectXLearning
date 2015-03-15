@@ -6,13 +6,19 @@
 
 // param ctor
 // TODO: Initialize additional members as necessary
-SemiReflectiveWindowApp::SemiReflectiveWindowApp(HINSTANCE hInstance, const std::string strSceneFilePath) 
-	: DXApp(hInstance, strSceneFilePath), m_pRoom(new RoomV1()), m_pBox(new Box())
-{
-}
+SemiReflectiveWindowApp::SemiReflectiveWindowApp(HINSTANCE hInstance, const std::string strSceneFilePath) : 
+	DXApp(hInstance, strSceneFilePath), 
+	m_pRoom(new RoomV1()),
+	m_pBox(new Box()),
+	m_bModelsLoaded(false)
+{}
 
 // dtor
-SemiReflectiveWindowApp::~SemiReflectiveWindowApp()	{}
+SemiReflectiveWindowApp::~SemiReflectiveWindowApp()	
+{
+	// Join with the models loader thread.
+	m_modelsLoader.join();	
+}
 
 // initializes the DirectX application's objects and resources
 void SemiReflectiveWindowApp::initApp()
@@ -78,19 +84,19 @@ void SemiReflectiveWindowApp::createResources()
 	const wpath textureRoot(m_pSceneBuilder->getTextureRootW());
 
 	const wpath crateTex = textureRoot / wpath(L"WoodCrate02.dds");
-	HR(DirectX::CreateDDSTextureFromFile(md3dDevice, crateTex.file_string().c_str(), 0, &m_pCrateRV.p));
+	HR(DirectX::CreateDDSTextureFromFile(md3dDevice.p, crateTex.file_string().c_str(), 0, &m_pCrateRV.p));
 
 	const wpath floorTex = textureRoot / wpath(L"checkboard.dds");
-	HR(DirectX::CreateDDSTextureFromFile(md3dDevice, floorTex.file_string().c_str(), 0, &m_pFloorRV.p));
+	HR(DirectX::CreateDDSTextureFromFile(md3dDevice.p, floorTex.file_string().c_str(), 0, &m_pFloorRV.p));
 
 	const wpath mirrorTex = textureRoot / wpath(L"ice.dds");
-	HR(DirectX::CreateDDSTextureFromFile(md3dDevice, mirrorTex.file_string().c_str(), 0, &m_pMirrorRV.p));
+	HR(DirectX::CreateDDSTextureFromFile(md3dDevice.p, mirrorTex.file_string().c_str(), 0, &m_pMirrorRV.p));
 
 	const wpath specTex = textureRoot / wpath(L"defaultspec.dds");
-	HR(DirectX::CreateDDSTextureFromFile(md3dDevice, specTex.file_string().c_str(), 0, &m_pSpecRV.p));
+	HR(DirectX::CreateDDSTextureFromFile(md3dDevice.p, specTex.file_string().c_str(), 0, &m_pSpecRV.p));
 
 	const wpath wallTex = textureRoot / wpath(L"brick01.dds");
-	HR(DirectX::CreateDDSTextureFromFile(md3dDevice, wallTex.file_string().c_str(), 0, &m_pWallRV.p));
+	HR(DirectX::CreateDDSTextureFromFile(md3dDevice.p, wallTex.file_string().c_str(), 0, &m_pWallRV.p));
 
 	// init parallel lights
 	ParallelLightParams parallelDefaultParams;
@@ -121,122 +127,127 @@ void SemiReflectiveWindowApp::createResources()
 // Define scene objects which need to be rendered.
 void SemiReflectiveWindowApp::createObjects()
 {
-	// Init the room object.
-	m_pRoom->init(md3dDevice, 1.0f);
-
-	// Init the box object.
-	m_pBox->init(md3dDevice, 1.0f);
-
-	// TODO: Add implementation here.
+	// Launch the model loading thread.
+	m_modelsLoader = std::thread(&SemiReflectiveWindowApp::loadModels, this);
+	//loadModels();
 }
 
 // Meat of the drawScene method, this is where the scene rendering is implemented.
 void SemiReflectiveWindowApp::drawObjects()
 {
-	// Set the input layout and primitive topology.
-	md3dDeviceContext->IASetInputLayout(m_pVertexLayout.p);
-	md3dDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
+	if(m_bModelsLoaded)
+	{
+		// Set the input layout and primitive topology.
+		md3dDeviceContext->IASetInputLayout(m_pVertexLayout.p);
+		md3dDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
-	// Setup to draw the wall.
+		// Setup to draw the wall.
 
-	// Set the vertex shader.
-	m_pvsBasic->bindShader();
+		// Set the vertex shader.
+		m_pvsBasic->bindShader();
 
-	// Set the vertex shader constants.
-	const DXMatrix viewProj(m_pCamera->view() * m_pCamera->proj());
-	DXMatrix world(DXMatrix::Identity()), wvp(world * viewProj), tex(DXMatrix::Identity());
-	m_pcbPerObject->map();
-	m_pcbPerObject->setMatrix("gWorld", world);
-	m_pcbPerObject->setMatrix("gWorldInvTrans", world);
-	m_pcbPerObject->setMatrix("gWVP", wvp);
-	m_pcbPerObject->setMatrix("gTexMtx", tex);
-	m_pcbPerObject->unmap();
-	//const std::array<BufferRawPtr, 1> ppBuffers = { m_pcbPerObject->buffer() };
-	std::array<BufferRawPtr, 1> ppBuffers = { m_pcbPerObject->buffer() };
-	m_pvsBasic->bindContantBuffers(
-		m_pcbPerObject->bindPoint(),
-		ppBuffers.size(),
-		ppBuffers.data());
+		// Set the vertex shader constants.
+		const DXMatrix viewProj(m_pCamera->view() * m_pCamera->proj());
+		DXMatrix world(DXMatrix::Identity()), wvp(world * viewProj), tex(DXMatrix::Identity());
+		m_pcbPerObject->map();
+		m_pcbPerObject->setMatrix("gWorld", world);
+		m_pcbPerObject->setMatrix("gWorldInvTrans", world);
+		m_pcbPerObject->setMatrix("gWVP", wvp);
+		m_pcbPerObject->setMatrix("gTexMtx", tex);
+		m_pcbPerObject->unmap();
+		//const std::array<BufferRawPtr, 1> ppBuffers = { m_pcbPerObject->buffer() };
+		std::array<BufferRawPtr, 1> ppBuffers = { m_pcbPerObject->buffer() };
+		m_pvsBasic->bindContantBuffers(
+			m_pcbPerObject->bindPoint(),
+			ppBuffers.size(),
+			ppBuffers.data());
 
-	// Set the pixel shader.
-	m_ppsBasic->bindShader();
+		// Set the pixel shader.
+		m_ppsBasic->bindShader();
 
-	// Set the pixel shader constants.
-	const DXVector3 eyePosW(m_pCamera->eyePosW());
-	m_pcbPerFrame->map();
-	m_pcbPerFrame->setDatum<std::size_t>("nParallelLights", m_parallelLights.size());
-	m_pcbPerFrame->setDatum<std::size_t>("nPointLights", 0);
-	m_pcbPerFrame->setDatum<std::size_t>("nSpotLights", 0);
-	m_pcbPerFrame->setDatum<DXVector3>("gEyePosW", eyePosW);
-	m_pcbPerFrame->unmap();
+		// Set the pixel shader constants.
+		const DXVector3 eyePosW(m_pCamera->eyePosW());
+		m_pcbPerFrame->map();
+		m_pcbPerFrame->setDatum<std::size_t>("nParallelLights", m_parallelLights.size());
+		m_pcbPerFrame->setDatum<std::size_t>("nPointLights", 0);
+		m_pcbPerFrame->setDatum<std::size_t>("nSpotLights", 0);
+		m_pcbPerFrame->setDatum<DXVector3>("gEyePosW", eyePosW);
+		m_pcbPerFrame->unmap();
 
-	ppBuffers[0] = m_pcbPerFrame->buffer();
-	m_ppsBasic->bindContantBuffers(
-		m_pcbPerFrame->bindPoint(),
-		ppBuffers.size(),
-		ppBuffers.data());
+		ppBuffers[0] = m_pcbPerFrame->buffer();
+		m_ppsBasic->bindContantBuffers(
+			m_pcbPerFrame->bindPoint(),
+			ppBuffers.size(),
+			ppBuffers.data());
 
-	// Set the pixel shader resources.
-	std::array<ShaderResourceViewRawPtr, 5> ppResources = {
-		m_sbParallelLights->srv(),
-		nullptr,
-		nullptr,
-		m_pWallRV.p,
-		m_pSpecRV.p };
-	m_ppsBasic->bindResources(
-		0,
-		ppResources.size(),
-		ppResources.data());
+		// Set the pixel shader resources.
+		std::array<ShaderResourceViewRawPtr, 5> ppResources = {
+			m_sbParallelLights->srv(),
+			nullptr,
+			nullptr,
+			m_pWallRV.p,
+			m_pSpecRV.p };
+		m_ppsBasic->bindResources(
+			0,
+			ppResources.size(),
+			ppResources.data());
 
-	// Set the pixel shader sampler states.
-	std::array<SamplerStateRawPtr, 1> ppSamplers = { m_pSampler.p };
-	m_ppsBasic->bindSamplers(
-		0,
-		ppSamplers.size(),
-		ppSamplers.data());
+		// Set the pixel shader sampler states.
+		std::array<SamplerStateRawPtr, 1> ppSamplers = { m_pSampler.p };
+		m_ppsBasic->bindSamplers(
+			0,
+			ppSamplers.size(),
+			ppSamplers.data());
 
-	// Draw the wall.
-	m_pRoom->drawWall();
+		// Draw the wall.
+		m_pRoom->drawWall();
 
-	// Set the wall's texture only and re-bind the pixel shader resources.
-	m_ppsBasic->bindResources(
-		3,
-		1,
-		&m_pFloorRV.p);
+		// Set the wall's texture only and re-bind the pixel shader resources.
+		m_ppsBasic->bindResources(
+			3,
+			1,
+			&m_pFloorRV.p);
 
-	// Draw the floor.
-	m_pRoom->drawFloor();
+		// Draw the floor.
+		m_pRoom->drawFloor();
 
-	// Set the box's vertex and index buffers.
-	m_pBox->setIndexAndVertexBuffers();
+		// Set the box's vertex and index buffers.
+		m_pBox->setIndexAndVertexBuffers();
 
-	// Set the world transform for the box.
-	world = DXMatrix::CreateTranslation(DXVector3(-2,0,-2)) * DXMatrix::CreateScale(2.0f);
-	wvp = world * viewProj;
-	m_pcbPerObject->map();
-	m_pcbPerObject->setMatrix("gWorld", world);
-	m_pcbPerObject->setMatrix("gWorldInvTrans", world.Invert().Transpose());
-	m_pcbPerObject->setMatrix("gWVP", wvp);
-	m_pcbPerObject->setMatrix("gTexMtx", tex);
-	m_pcbPerObject->unmap();
-	//const std::array<BufferRawPtr, 1> ppBuffers = { m_pcbPerObject->buffer() };
-	//std::array<BufferRawPtr, 1> ppBuffers = { m_pcbPerObject->buffer() };
-	ppBuffers[0] = m_pcbPerObject->buffer();
-	m_pvsBasic->bindContantBuffers(
-		m_pcbPerObject->bindPoint(),
-		ppBuffers.size(),
-		ppBuffers.data());
+		// Set the world transform for the box.
+		world = DXMatrix::CreateTranslation(DXVector3(-2, 0, -2)) * DXMatrix::CreateScale(2.0f);
+		wvp = world * viewProj;
+		m_pcbPerObject->map();
+		m_pcbPerObject->setMatrix("gWorld", world);
+		m_pcbPerObject->setMatrix("gWorldInvTrans", world.Invert().Transpose());
+		m_pcbPerObject->setMatrix("gWVP", wvp);
+		m_pcbPerObject->setMatrix("gTexMtx", tex);
+		m_pcbPerObject->unmap();
+		//const std::array<BufferRawPtr, 1> ppBuffers = { m_pcbPerObject->buffer() };
+		//std::array<BufferRawPtr, 1> ppBuffers = { m_pcbPerObject->buffer() };
+		ppBuffers[0] = m_pcbPerObject->buffer();
+		m_pvsBasic->bindContantBuffers(
+			m_pcbPerObject->bindPoint(),
+			ppBuffers.size(),
+			ppBuffers.data());
 
-	// Set the box's texture only and re-bind the pixel shader resources.
-	m_ppsBasic->bindResources(
-		3,
-		1,
-		&m_pCrateRV.p);
+		// Set the box's texture only and re-bind the pixel shader resources.
+		m_ppsBasic->bindResources(
+			3,
+			1,
+			&m_pCrateRV.p);
 
-	// Draw the box.
-	m_pBox->draw();
-		
-	// TODO: Add implementation here.
+		// Draw the box.
+		m_pBox->draw();
+	}
+	else
+	{
+		// Draw the labels for the GBuffer textures
+		const float windowWidth(mClientWidth), windowHeight(mClientHeight);
+		mSpriteBatch->Begin();
+		mFont->DrawString(mSpriteBatch.get(), L"Loading models", DXVector2(0.4f*windowWidth, 0.5f*windowHeight - mFont->GetLineSpacing()));	// Bottom left
+		mSpriteBatch->End();
+	}
 }
 
 // Define to build the shaders which will be used by the application.
@@ -282,6 +293,22 @@ void SemiReflectiveWindowApp::buildVertexLayouts()
 	m_pVertexLayout = m_pvsBasic->inputLayout();
 
 	// TODO: Add implementation here.
+}
+
+// Functor to load the scene models.
+void SemiReflectiveWindowApp::loadModels()
+{
+	// Init the room object.
+	m_pRoom->init(md3dDevice.p, 1.0f);
+
+	// Init the box object.
+	m_pBox->init(md3dDevice.p, 1.0f);
+
+	// Load the scene's models.
+	m_pSceneBuilder->buildBasicModels(m_models);
+
+	// We're done.
+	m_bModelsLoaded = true;
 }
 
 // TODO: Re-implement iff necessary.

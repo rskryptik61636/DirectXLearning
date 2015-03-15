@@ -151,6 +151,11 @@ Semi reflective windows
 		
 		- For now, let's look at one of the scene files and see what we need for our particular scene...
 		
+		- Considering implementing model loading on separate threads for kicks...
+			- We'll need an std::atomic_bool which needs to be set once the models are done loading.
+			
+			- Point to note: ID3D11Device is thread-safe whereas ID3D11DeviceContext is not. We need to be careful about performing model loading on another thread if the device context is involved.
+		
 	- HAZZAH!!! A wall was rendered!
 		- The design of the ObjectV2 and DXApp classes are overly complicated though. Need to simplify them...
 		
@@ -180,3 +185,6 @@ Semi reflective windows
 					  
 			- Looks like the Box class doesn't have any valid normals, tangents, binormals or tex coords specified. May need to add them in...
 				- Let's use the GeometryGenerator class used to create the vertices in the TangentBox class.
+				
+	- Interesting, seeing some COM leaks that weren't there before and the live object reporting mechanism shows that there an abnormally high no. of references (10695) for ID3D11Context after it was released.
+		- Found the problem. RoomV1 object had its own copy of device context but the draw methods were still creating local copies from the device object and one of them wasn't releasing it correctly :)

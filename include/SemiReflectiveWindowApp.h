@@ -15,6 +15,10 @@
 // Box class.
 #include "Box.h"
 
+// C++ 11 classes.
+#include <thread>
+#include <atomic>
+
 // TODO: Add additional headers here.
 
 // App which implements a window that is mostly transparent but also slightly reflective in that it posesses slight mirror like properties.
@@ -78,6 +82,9 @@ protected:
 	// TODO: Implement this method.
 	virtual void buildVertexLayouts() /*= 0*/;
 
+	// Functor to load the scene models.
+	void loadModels();
+
 	// TODO: Re-implement iff necessary.
 #if 0
 	// Initializes the camera using the given params
@@ -117,6 +124,13 @@ protected:
 
 	// Structured buffers.
 	std::unique_ptr<ShaderStructuredBuffer<SLight>> m_sbParallelLights;
+
+	// Scene basic models.
+	BasicModelDirectory m_models;
+
+	// Scene objects loading thread and associated done flag.
+	std::thread m_modelsLoader;
+	std::atomic<bool> m_bModelsLoaded;	
 
 	// @TODO: add protected members here
 
