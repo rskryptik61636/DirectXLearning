@@ -68,6 +68,9 @@ protected:
 	D3D_FEATURE_LEVEL mFeatureLevel;
 	D3D11_VIEWPORT mDefaultViewport;
 
+	// Debug device.
+	CComPtr<ID3D11Debug> m_pDebug;
+
 	// ID3DX10Font has been deprecated as of Win 8.1, DirectXTK's SpriteBatch and SpriteFont classes can serve as a replacement
 	// Usage: http://directxtk.codeplex.com/wikipage?title=SpriteFont&referringTitle=DirectXTK
 	SpriteBatchPtr mSpriteBatch;

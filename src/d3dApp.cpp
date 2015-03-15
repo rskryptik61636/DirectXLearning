@@ -92,11 +92,17 @@ D3DApp::~D3DApp()
 	ReleaseCOM(mDepthStencilView);
 	ReleaseCOM(mSwapChain);
 	ReleaseCOM(mDepthStencilBuffer);
-	ReleaseCOMPtr(md3dDevice);
 	ReleaseCOMPtr(md3dDeviceContext);
-	//ReleaseCOM(mFont);	// @TODO: remove when done testing
 	mSpriteBatch.reset();
 	mFont.reset();
+
+	// Check for any leaks.
+#ifdef _DEBUG
+	if (SUCCEEDED(md3dDevice->QueryInterface(__uuidof(ID3D11Debug), reinterpret_cast<void**>(&m_pDebug.p))))
+		m_pDebug->ReportLiveDeviceObjects(D3D11_RLDO_DETAIL);
+#endif	// _DEBUG
+
+	ReleaseCOMPtr(md3dDevice);
 }
 
 HINSTANCE D3DApp::getAppInst()
@@ -496,20 +502,6 @@ void D3DApp::initDirect3D()
 		&md3dDevice,			// d3d11 device
 		&mFeatureLevel,			// selected feature level
 		&md3dDeviceContext) );	// d3d11 device context
-
-// @TODO: remove when done testing
-#if 0
-	HR( D3D10CreateDeviceAndSwapChain(
-			0,                 //default adapter
-			md3dDriverType,
-			0,                 // no software device
-			createDeviceFlags, 
-			D3D10_SDK_VERSION,
-			&sd,
-			&mSwapChain,
-			&md3dDevice) );
-#endif	// 0
-
 
 	// The remaining steps that need to be carried out for d3d creation
 	// also need to be executed every time the window is resized.  So
