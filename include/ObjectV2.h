@@ -62,7 +62,7 @@ protected:
 	std::vector<SimpleVertex> mSimpleVertexList;*/
 	std::vector<DWORD> mIndexList;
 
-	ID3D11Device *mD3dDevice;	// d3d device
+	DevicePtr mD3dDevice;	// d3d device
 	DeviceContextPtr mD3dDeviceContext;	// d3d device context
 	ID3D11Buffer *mVb;			// vertex buffer
 	ID3D11Buffer *mIb;			// index buffer
