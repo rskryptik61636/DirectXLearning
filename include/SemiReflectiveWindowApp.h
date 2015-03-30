@@ -85,6 +85,9 @@ protected:
 	// Functor to load the scene models.
 	void loadModels();
 
+	// Recursive function which traverses the model's node tree and draws the meshes at each node.
+	void drawModel(const BasicModelPtr &pModel, const DXModelNode &currNode, const DXMatrix &viewProj, std::vector<DXMatrix> &transformationStack);
+
 	// TODO: Re-implement iff necessary.
 #if 0
 	// Initializes the camera using the given params

@@ -11,7 +11,9 @@ SemiReflectiveWindowApp::SemiReflectiveWindowApp(HINSTANCE hInstance, const std:
 	m_pRoom(new RoomV1()),
 	m_pBox(new Box()),
 	m_bModelsLoaded(false)
-{}
+{
+	//::CoInitialize(nullptr);	// Need to call this to initialize WICTextureLoader in order to load textures.
+}
 
 // dtor
 SemiReflectiveWindowApp::~SemiReflectiveWindowApp()	
@@ -141,6 +143,9 @@ void SemiReflectiveWindowApp::drawObjects()
 		md3dDeviceContext->IASetInputLayout(m_pVertexLayout.p);
 		md3dDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);
 
+		// Set the default depth stencil state.
+		md3dDeviceContext->OMSetDepthStencilState(0, 0);
+
 		// Setup to draw the wall.
 
 		// Set the vertex shader.
@@ -239,6 +244,15 @@ void SemiReflectiveWindowApp::drawObjects()
 
 		// Draw the box.
 		m_pBox->draw();
+
+		// Draw Sydney.
+		std::vector<DXMatrix> transformationStack(1, m_models.at("Sydney").getTransform());
+		m_models.at("Sydney").pModel->setVertexAndIndexBuffers();
+		drawModel(
+			m_models.at("Sydney").pModel, 
+			m_models.at("Sydney").pModel->rootNode(), 
+			viewProj, 
+			transformationStack);
 	}
 	else
 	{
@@ -298,6 +312,8 @@ void SemiReflectiveWindowApp::buildVertexLayouts()
 // Functor to load the scene models.
 void SemiReflectiveWindowApp::loadModels()
 {
+	::CoInitializeEx(nullptr, COINIT_APARTMENTTHREADED);	// Need to call this to initialize WICTextureLoader in order to load textures on this thread.
+
 	// Init the room object.
 	m_pRoom->init(md3dDevice.p, 1.0f);
 
@@ -306,9 +322,108 @@ void SemiReflectiveWindowApp::loadModels()
 
 	// Load the scene's models.
 	m_pSceneBuilder->buildBasicModels(m_models);
+	for (BasicModelDirectory::iterator i = m_models.begin(); i != m_models.end(); ++i)
+	{
+		i->second.pModel->init(md3dDevice, 1.0f);
+	}
 
 	// We're done.
 	m_bModelsLoaded = true;
+}
+
+// Recursive function which traverses the model's node tree and draws the meshes at each node.
+void SemiReflectiveWindowApp::drawModel(const BasicModelPtr &pModel, const DXModelNode &currNode, const DXMatrix &viewProj, std::vector<DXMatrix> &transformationStack)
+{
+	// Push the current node's transformation onto the transformation stack.
+	transformationStack.push_back(currNode.transformation);
+
+	// Draw all the meshes belonging to the current node.
+	const std::vector<UINT> &currMeshes = currNode.meshIndexes;
+	for (std::size_t i = 0; i < currMeshes.size(); ++i)
+	{
+		// Compute the current world transformation matrix by multiplying by all the matrices in the transformation stack
+		// in reverse.
+		DXMatrix world(DXMatrix::Identity());
+		for (std::vector<DXMatrix>::reverse_iterator j = transformationStack.rbegin(); j != transformationStack.rend(); ++j)
+		{
+			world *= *j;
+		}			
+		
+		// Compute the current WVP matrix and set it.
+		const DXMatrix wvp(world * viewProj);
+		//m_pTexEffect->setWVP(wvp);
+
+		// Update m_cbPerObject and bind it to the pipeline.
+		m_pcbPerObject->map();
+		m_pcbPerObject->setMatrix("gWorld", world);
+		m_pcbPerObject->setMatrix("gWorldInvTrans", world.Invert().Transpose());
+		m_pcbPerObject->setMatrix("gWVP", wvp);
+		m_pcbPerObject->setMatrix("gTexMtx", DXMatrix::Identity());
+		m_pcbPerObject->unmap();
+		
+		m_pvsBasic->bindContantBuffers(
+			m_pcbPerObject->bindPoint(),
+			1,
+			&m_pcbPerObject->pBuffer.p);
+
+		// Set the diffuse and specular textures for the pModel.
+		const UINT uiMeshIndex(pModel->getMaterialIndex(currMeshes[i]));
+		std::array<ShaderResourceViewRawPtr, 2> ppResources = {
+			pModel->getDiffuseTexture(uiMeshIndex).p,
+			pModel->getSpecularTexture(uiMeshIndex).p ?
+			pModel->getSpecularTexture(uiMeshIndex).p :
+			m_pSpecRV.p };
+		m_ppsBasic->bindResources(
+			3,
+			ppResources.size(),
+			ppResources.data());
+
+		// Draw the current mesh.
+		pModel->draw(currMeshes[i]);
+
+		// TODO: Remove when done testing.
+#if 0
+		// Set the current diffuse and specular textures and apply the effect.
+		///*const UINT uiMeshIndex(m_basicModels["Sponza"].pModel->getMaterialIndex(currMeshes[i]));
+		//const ShaderResourceViewPtr &pDiffuse(m_basicModels["Sponza"].pModel->getDiffuseTexture(uiMeshIndex));
+		//m_pTexEffect->setDiffuseMap(pDiffuse);
+		//const ShaderResourceViewPtr &pSpecular(m_basicModels["Sponza"].pModel->getSpecularTexture(uiMeshIndex));
+		//pSpecular.p ? m_pTexEffect->setSpecMap(pSpecular) : m_pSpecularMap;*/
+
+		//// Set the current diffuse and specular textures in the normal mapping effect.
+		//// Choose to apply either the texture mapping effect or the normal mapping effect
+		//// depending on whether the current material has a normal map or not.
+		//if (m_pNormalMappingEffectToggle->getState())
+		//{
+		//	const ShaderResourceViewPtr &pNormal(m_basicModels["Sponza"].pModel->getNormalTexture(uiMeshIndex));
+		//	if (pNormal.p)
+		//	{
+		//		md3dDeviceContext->IASetInputLayout(m_pNormalMappingEffect->getInputLayout());	// set the input layout of the normal mapping effect
+
+		//		m_pNormalMappingEffect->setWorld(world);
+		//		m_pNormalMappingEffect->setWorldInvTrans(world.Invert().Transpose());
+		//		m_pNormalMappingEffect->setWVP(wvp);
+
+		//		m_pNormalMappingEffect->setDiffuseMap(pDiffuse);
+		//		pSpecular.p ? m_pNormalMappingEffect->setSpecularMap(pSpecular) : m_pSpecularMap;
+
+		//		m_pNormalMappingEffect->setNormalMap(pNormal);
+		//		m_pNormalMappingEffect->apply();
+		//	}
+		//	else
+		//		m_pTexEffect->apply();
+		//}
+		//else
+		//	m_pTexEffect->apply();  
+#endif // 0		
+	}
+
+	// Draw the meshes of all the children of the current node.
+	for (std::size_t i = 0; i < currNode.childNodes.size(); ++i)
+		drawModel(pModel, currNode.childNodes[i], viewProj, transformationStack);
+
+	// Pop the current node's transformation from the stack.
+	transformationStack.pop_back();
 }
 
 // TODO: Re-implement iff necessary.

@@ -188,3 +188,11 @@ Semi reflective windows
 				
 	- Interesting, seeing some COM leaks that weren't there before and the live object reporting mechanism shows that there an abnormally high no. of references (10695) for ID3D11Context after it was released.
 		- Found the problem. RoomV1 object had its own copy of device context but the draw methods were still creating local copies from the device object and one of them wasn't releasing it correctly :)
+		
+	- WICTextureLoader was not able to load textures on a separate thread and it seems there were two issues with loading resources this way:
+		- If WICTextureLoader is launched on a separate thread, CoInitalizeEx needs to be called on that thread in order to initialize COM correctly.
+		
+		- The loadTexture method which calls WICTextureLoader also passes in the immediate context object which is not thread-safe! We may not be able to load models on a separate thread if we're going
+		  to be using the immediate context to load resources. 
+		  
+		- Worked around this by not passing in the immediate context for now. May need to re-enable if the need arises.
