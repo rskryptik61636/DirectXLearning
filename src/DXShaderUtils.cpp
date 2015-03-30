@@ -13,7 +13,8 @@ HRESULT loadTexture(const DevicePtr &pDevice, const DeviceContextPtr &pDeviceCon
 	}
 	else
 	{
-		hr = DirectX::CreateWICTextureFromFile(pDevice.p, pDeviceContext.p, texturePath.file_string().c_str(), pResource, pResourceView);
+		// TODO: Re-enable immediate context once we have a thread-safe way to load textures.
+		hr = DirectX::CreateWICTextureFromFile(pDevice.p, nullptr/*pDeviceContext.p*/, texturePath.file_string().c_str(), pResource, pResourceView);
 	}
 
 	return hr;
