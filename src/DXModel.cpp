@@ -219,6 +219,17 @@ const ShaderResourceViewPtr DXBasicModel::getNormalTexture(const UINT uiMeshMate
 // Method to return the composite transformation matrix
 DXMatrix BasicModelInstance::getTransform()
 {
+	// NOTE: Old incorrect implementation.
+#if 0
 	return DXMatrix::CreateTranslation(position) * DXMatrix::CreateScale(scale) *
 		DXMatrix::CreateFromAxisAngle(DXVector3(orientation.x, orientation.y, orientation.z), orientation.w);
+#endif // 0
+
+
+	return 
+		DXMatrix::CreateFromAxisAngle(
+			DXVector3(orientation.x, orientation.y, orientation.z), 
+			orientation.w) *
+		DXMatrix::CreateScale(scale) *
+		DXMatrix::CreateTranslation(position);
 }
