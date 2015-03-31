@@ -196,3 +196,12 @@ Semi reflective windows
 		  to be using the immediate context to load resources. 
 		  
 		- Worked around this by not passing in the immediate context for now. May need to re-enable if the need arises.
+		
+	- The scene is rendering but the crate reflection is messed up. Investigate...
+		- Well the first problem was that the box's vertex and index buffers were not set :D
+		
+		- Needed to invert the light direction and enable blending.
+		
+	- SUCCESS!!! We have semi-reflective windows!!!
+	
+	- Need to cleanup the state description struct creation to use D3D11_DEFAULT.

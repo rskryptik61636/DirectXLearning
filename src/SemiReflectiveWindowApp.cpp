@@ -123,6 +123,101 @@ void SemiReflectiveWindowApp::createResources()
 	SamplerStateMaker samplerMaker;
 	samplerMaker.makeTriLinear(md3dDevice, m_pSampler);
 
+	// define the mirror's depth-stencil state
+	// refer the following for default values: http://msdn.microsoft.com/en-us/library/windows/desktop/ff476110%28v=vs.85%29.aspx
+	D3D11_DEPTH_STENCIL_DESC mirrorDSSDesc;
+	ZeroMemory(&mirrorDSSDesc, sizeof(mirrorDSSDesc));			// clear the memory
+	mirrorDSSDesc.DepthEnable = TRUE;							// enable the depth test
+	mirrorDSSDesc.DepthFunc = D3D11_COMPARISON_LESS;			// standard comparison test, fragments with a lower depth value get written to the depth buffer
+	mirrorDSSDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ALL;	// all bits enabled
+
+	mirrorDSSDesc.StencilEnable = TRUE;								// enable the stencil test
+	mirrorDSSDesc.StencilReadMask = D3D11_DEFAULT_STENCIL_READ_MASK;	// 0xff
+	mirrorDSSDesc.StencilWriteMask = D3D11_DEFAULT_STENCIL_WRITE_MASK;	// 0xff
+
+	// stencil test params for front facing polygons
+	mirrorDSSDesc.FrontFace.StencilFunc = D3D11_COMPARISON_ALWAYS;	// the stencil test always passes
+	mirrorDSSDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_REPLACE;	// replace the current value on the stencil buffer with stencilRef if the stencil test passes
+	// this will always be the case since we just set the stencil test to always pass
+	mirrorDSSDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;	// keep the current value on the stencil buffer if the stencil test fails
+	// will not ever happen since we just set the stencil test to always pass
+	mirrorDSSDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;		// same as the above case
+
+	// stencil test params for back facing polygons (irrelevant as we're not rendering back facing polygons, keep same as for front face)
+	mirrorDSSDesc.BackFace.StencilFunc = D3D11_COMPARISON_ALWAYS;
+	mirrorDSSDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_REPLACE;
+	mirrorDSSDesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+	mirrorDSSDesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+
+	// create the depth-stencil state
+	HR(md3dDevice->CreateDepthStencilState(&mirrorDSSDesc, &m_pdssMirror.p));
+
+	// define the mirror's blend state
+	D3D11_BLEND_DESC mirrorBlendDesc;
+	ZeroMemory(&mirrorBlendDesc, sizeof(mirrorBlendDesc));	// clear the memory
+	mirrorBlendDesc.AlphaToCoverageEnable = FALSE;	// default value
+	mirrorBlendDesc.IndependentBlendEnable = FALSE;	// default value
+
+	// blend settings for the 1st render target (which is what we're dealing with)
+	mirrorBlendDesc.RenderTarget[0].BlendEnable = TRUE;	// enable blending
+	mirrorBlendDesc.RenderTarget[0].BlendOp = D3D11_BLEND_OP_ADD;	// add the source and dest contributions
+	mirrorBlendDesc.RenderTarget[0].SrcBlend = D3D11_BLEND_BLEND_FACTOR;	// use the user defined blend factor for the source
+	mirrorBlendDesc.RenderTarget[0].DestBlend = D3D11_BLEND_INV_BLEND_FACTOR;	// use the inverse of the user defined blend factor for the destination
+	mirrorBlendDesc.RenderTarget[0].BlendOpAlpha = D3D11_BLEND_OP_ADD;	// add the source and dest alpha contributions
+	mirrorBlendDesc.RenderTarget[0].SrcBlendAlpha = D3D11_BLEND_ONE;	// source alpha factor = 1
+	mirrorBlendDesc.RenderTarget[0].DestBlendAlpha = D3D11_BLEND_ZERO;	// destination alpha factor = 0
+	mirrorBlendDesc.RenderTarget[0].RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+
+	// create the mirror's blend state
+	HR(md3dDevice->CreateBlendState(&mirrorBlendDesc, &m_pbsMirror.p));
+
+	// define the mirror reflection's depth-stencil state
+	// the depth and stencil tests are setup such that the reflected crate is visible through the mirror
+	D3D11_DEPTH_STENCIL_DESC reflectDSSDesc;
+	ZeroMemory(&reflectDSSDesc, sizeof(reflectDSSDesc));	// clear the memory
+
+	// the depth test will always pass and no writes will be made to the depth buffer
+	// as the crate needs to be visible through the mirror even though it is actually
+	// behind it in the scene
+	reflectDSSDesc.DepthEnable = TRUE;	// enable the depth test
+	reflectDSSDesc.DepthFunc = D3D11_COMPARISON_ALWAYS;	// set the depth test to always pass
+	reflectDSSDesc.DepthWriteMask = D3D11_DEPTH_WRITE_MASK_ZERO;	// write mask = 0
+
+	// the stencil test will pass iff the stencilRef value == the current value on the stencil buffer
+	reflectDSSDesc.StencilEnable = TRUE;	// enable the stencil test
+	reflectDSSDesc.StencilReadMask = D3D11_DEFAULT_STENCIL_READ_MASK;	// default value (1)
+	reflectDSSDesc.StencilWriteMask = D3D11_DEFAULT_STENCIL_WRITE_MASK;	// default value (1)
+
+	// front face settings, same as for the regular mirror depth-stencil state except in the case of the stencil test passing,
+	// wherein the current stencil buffer value is retained if it is equal to the stencilRef value
+	reflectDSSDesc.FrontFace.StencilFunc = D3D11_COMPARISON_EQUAL;
+	reflectDSSDesc.FrontFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+	reflectDSSDesc.FrontFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+	reflectDSSDesc.FrontFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+
+	// back face settings, irrelevant again
+	reflectDSSDesc.BackFace.StencilFunc = D3D11_COMPARISON_EQUAL;
+	reflectDSSDesc.BackFace.StencilPassOp = D3D11_STENCIL_OP_KEEP;
+	reflectDSSDesc.BackFace.StencilDepthFailOp = D3D11_STENCIL_OP_KEEP;
+	reflectDSSDesc.BackFace.StencilFailOp = D3D11_STENCIL_OP_KEEP;
+
+	// create the mirror reflection's depth stencil state
+	HR(md3dDevice->CreateDepthStencilState(&reflectDSSDesc, &m_pdssReflectedCrate.p));
+
+	// define the rasterizer state for the reflected crate
+	// the rasterizer state considers those polygons with CCW winding order to be front facing
+	// this is done because the normals of the reflected crate will still be facing the same way
+	// as their counterparts on the original crate since the reflection transformation will not
+	// affect the normals
+	D3D11_RASTERIZER_DESC reflectRSDesc;
+	ZeroMemory(&reflectRSDesc, sizeof(reflectRSDesc));
+	reflectRSDesc.CullMode = D3D11_CULL_BACK;
+	reflectRSDesc.FillMode = D3D11_FILL_SOLID;
+	reflectRSDesc.FrontCounterClockwise = TRUE;
+
+	// create the rasterizer state for the reflected crate
+	HR(md3dDevice->CreateRasterizerState(&reflectRSDesc, &m_prsReflectedCrate.p));
+
 	// TODO: Add implementation here.
 }
 
@@ -220,7 +315,8 @@ void SemiReflectiveWindowApp::drawObjects()
 		m_pBox->setIndexAndVertexBuffers();
 
 		// Set the world transform for the box.
-		world = DXMatrix::CreateTranslation(DXVector3(-2, 0, -2)) * DXMatrix::CreateScale(2.0f);
+		DXMatrix crateWorld = DXMatrix::CreateTranslation(DXVector3(0, 1, -4)) * DXMatrix::CreateScale(2.0f);
+		world = crateWorld;
 		wvp = world * viewProj;
 		m_pcbPerObject->map();
 		m_pcbPerObject->setMatrix("gWorld", world);
@@ -253,6 +349,109 @@ void SemiReflectiveWindowApp::drawObjects()
 			m_models.at("Sydney").pModel->rootNode(), 
 			viewProj, 
 			transformationStack);
+
+		// Set the mirror's depth stencil state.
+		md3dDeviceContext->OMSetDepthStencilState(m_pdssMirror.p, 1);
+
+		// Set the transparent blend state.
+		/*const*/ FLOAT blendFactors[4] = { 0.25f, 0.25f, 0.25f, 1.0f };
+		const UINT sampleMask(0xffffffff);
+		md3dDeviceContext->OMSetBlendState(m_pbsMirror.p, blendFactors, sampleMask);
+
+		// Set the mirror's transform.
+		world = DXMatrix::Identity();
+		wvp = world * viewProj;
+		m_pcbPerObject->map();
+		m_pcbPerObject->setMatrix("gWorld", world);
+		m_pcbPerObject->setMatrix("gWorldInvTrans", world);
+		m_pcbPerObject->setMatrix("gWVP", wvp);
+		m_pcbPerObject->setMatrix("gTexMtx", tex);
+		m_pcbPerObject->unmap();
+		//const std::array<BufferRawPtr, 1> ppBuffers = { m_pcbPerObject->buffer() };
+		ppBuffers[0] = m_pcbPerObject->buffer();
+		m_pvsBasic->bindContantBuffers(
+			m_pcbPerObject->bindPoint(),
+			ppBuffers.size(),
+			ppBuffers.data());
+
+		// Set the mirror's texture only and re-bind the pixel shader resources.
+		m_ppsBasic->bindResources(
+			3,
+			1,
+			&m_pMirrorRV.p);
+
+		// Draw the mirror.
+		m_pRoom->drawMirror();
+
+		// Reset the blend state.
+		md3dDeviceContext->OMSetBlendState(nullptr, blendFactors, sampleMask);
+
+		// Reset the depth stencil state.
+		md3dDeviceContext->OMSetDepthStencilState(0, 0);
+
+		// Set the box's vertex and index buffers.
+		m_pBox->setIndexAndVertexBuffers();
+
+		// set the current world transformation to reflect about the mirror
+		const DXPlane reflectPlane(0.0f, 0.0f, 1.0f, 0.0f);	// xy plane
+		const DXMatrix reflector(DXMatrix::CreateReflection(reflectPlane));
+		world = crateWorld * reflector;	// first set the crate in its start position and then reflect
+		//world = DXMatrix::CreateTranslation(DXVector3(2, 1, 2)) * DXMatrix::CreateScale(2.0f);
+		wvp = world * viewProj;
+
+		m_pcbPerObject->map();
+		m_pcbPerObject->setMatrix("gWorld", world);
+		m_pcbPerObject->setMatrix("gWorldInvTrans", world.Invert().Transpose());
+		m_pcbPerObject->setMatrix("gWVP", wvp);
+		m_pcbPerObject->setMatrix("gTexMtx", tex);
+		m_pcbPerObject->unmap();
+		//const std::array<BufferRawPtr, 1> ppBuffers = { m_pcbPerObject->buffer() };
+		ppBuffers[0] = m_pcbPerObject->buffer();
+		m_pvsBasic->bindContantBuffers(
+			m_pcbPerObject->bindPoint(),
+			ppBuffers.size(),
+			ppBuffers.data());
+
+		// Set the box's texture only and re-bind the pixel shader resources.
+		m_ppsBasic->bindResources(
+			3,
+			1,
+			&m_pCrateRV.p);
+
+		// update the parallel light's dir to also reflect
+		const DXVector3 oriLightDir = m_parallelLights[0].dir;
+		m_parallelLights[0].dir = DXVector3::TransformNormal(m_parallelLights[0].dir, reflector);
+
+		// Update the parallel light's sb and bind to the pipeline.
+		m_sbParallelLights->setBuffer(m_parallelLights);
+		ppResources[0] = m_sbParallelLights->srv();
+		m_ppsBasic->bindResources(0, 1, &ppResources[0]);
+
+		// set the mirror reflection's blend state
+		blendFactors[0] = blendFactors[1] = blendFactors[2] = 0.25f;
+		md3dDeviceContext->OMSetBlendState(m_pbsMirror.p, blendFactors, sampleMask);
+
+		// set the mirror reflection's depth-stencil state
+		md3dDeviceContext->OMSetDepthStencilState(m_pdssReflectedCrate.p, 1);
+
+		// set the reflected crate's rasterizer state
+		md3dDeviceContext->RSSetState(m_prsReflectedCrate.p);
+
+		// draw the reflected crate
+		m_pBox->draw();
+
+		// reset the reflected crate's rasterizer state
+		md3dDeviceContext->RSSetState(0);
+
+		// reset the depth-stencil state
+		md3dDeviceContext->OMSetDepthStencilState(0, 0);
+
+		// reset the blend state
+		md3dDeviceContext->OMSetBlendState(0, blendFactors, sampleMask);
+
+		// Revert the light's original dir.
+		m_parallelLights[0].dir = oriLightDir;
+		m_sbParallelLights->setBuffer(m_parallelLights);
 	}
 	else
 	{

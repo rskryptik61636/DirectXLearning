@@ -110,6 +110,15 @@ protected:
 	// Room textures.
 	ShaderResourceViewPtr m_pCrateRV, m_pFloorRV, m_pMirrorRV, m_pSpecRV, m_pWallRV;
 
+	// Depth-stencil states.
+	DepthStencilStatePtr m_pdssMirror, m_pdssReflectedCrate;
+
+	// Blend states.
+	BlendStatePtr m_pbsMirror;
+
+	// Rasterizer states.
+	RasterizerStatePtr m_prsReflectedCrate;
+
 	// Sampler states.
 	SamplerStatePtr m_pSampler;
 
