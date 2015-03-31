@@ -157,39 +157,7 @@ struct ShaderStructuredBuffer : public ShaderVar
 		const UINT bindFlags,
 		const bool bIsDynamic = true,
 		const T* pInitData = NULL,
-		const bool bAppendConsume = false);// : 
-	//	ShaderVar(),
-	//	pDevice(pDev),
-	//	pDeviceContext(pDC)
-	//{
-	//	// reflect the shader and get the structured buffer bufName's info
-	//	ShaderReflectionPtr pReflector;
-	//	HR(D3DReflect(pShaderBlob->GetBufferPointer(), pShaderBlob->GetBufferSize(), IID_ID3D11ShaderReflection, reinterpret_cast<void**>(&pReflector.p)));
-
-	//	ShaderBufferDesc structuredBufDesc;
-	//	ShaderConstantBufferReflectorPtr pConstBuf = pReflector->GetConstantBufferByName(bufName.c_str());
-	//	HR(pConstBuf->GetDesc(&structuredBufDesc));
-
-	//	// init the constant buffer with the binding info
-	//	ShaderInputBindDesc structuredBufBindDesc;
-	//	HR(pReflector->GetResourceBindingDescByName(bufName.c_str(), &structuredBufBindDesc));
-
-	//	// init the constant buffer instance
-	//	strName = bufName;
-	//	bindDesc = structuredBufBindDesc;
-
-	//	// close the reflection interface
-	//	pReflector.Release();
-
-	//	// instantiate the structured buffer iff the no. of elements is > 0
-	//	if (nElements > 0)
-	//	{
-	//		//const bool bIsDynamic(true);	// NOTE: revise if necessary (now a default param with the same value, 28-Mar-2014)
-	//		pBuffer.reset(new StructuredBuffer<T>(pDevice, nElements, pInitData, bindFlags, bIsDynamic, bAppendConsume));
-	//	}
-	//	/*else
-	//		structuredBuffer.pBuffer.reset();*/
-	//}
+		const bool bAppendConsume = false);
 
 	// Set the structured buffer's contents.
 	void setBuffer(const std::vector<T> &elements);
@@ -275,9 +243,9 @@ void ShaderStructuredBuffer<T>::setBuffer(const std::vector<T> &elements)
 	const std::size_t nElements(elements.size());
 	if (nElements > 0)
 	{
-		T* pBuffer = pBuffer->MapDiscard(pDeviceContext);
+		T* pBuf = pBuffer->MapDiscard(pDeviceContext);
 		for (std::size_t i = 0; i < nElements; ++i)
-			pBuffer[i] = elements[i];
+			pBuf[i] = elements[i];
 		pBuffer->Unmap(pDeviceContext);
 	}
 }
