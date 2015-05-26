@@ -205,3 +205,13 @@ Semi reflective windows
 	- SUCCESS!!! We have semi-reflective windows!!!
 	
 	- Need to cleanup the state description struct creation to use D3D11_DEFAULT.
+	
+	- Cleanup activities
+		- Remove pipeline state setting functions in the shader classes. That should really be the job of the renderer.
+			- bindShader
+			- bindConstantBuffers
+			- bindResources
+			- bindSamplers
+			
+		- Instead of these methods, it might make more sense to have an acccessor method called ppShader which can be used by the renderer directly to bind the shader to the pipeline.
+		
