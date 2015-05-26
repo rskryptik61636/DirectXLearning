@@ -244,7 +244,10 @@ void SemiReflectiveWindowApp::drawObjects()
 		// Setup to draw the wall.
 
 		// Set the vertex shader.
-		m_pvsBasic->bindShader();
+		md3dDeviceContext->VSSetShader(
+			m_pvsBasic->pShader(),
+			nullptr,
+			NULL);
 
 		// Set the vertex shader constants.
 		const DXMatrix viewProj(m_pCamera->view() * m_pCamera->proj());
@@ -255,16 +258,18 @@ void SemiReflectiveWindowApp::drawObjects()
 		m_pcbPerObject->setMatrix("gWVP", wvp);
 		m_pcbPerObject->setMatrix("gTexMtx", tex);
 		m_pcbPerObject->unmap();
-		//const std::array<BufferRawPtr, 1> ppBuffers = { m_pcbPerObject->buffer() };
 		std::array<BufferRawPtr, 1> ppBuffers = { m_pcbPerObject->buffer() };
-		m_pvsBasic->bindContantBuffers(
+		md3dDeviceContext->VSSetConstantBuffers(
 			m_pcbPerObject->bindPoint(),
 			ppBuffers.size(),
 			ppBuffers.data());
-
+		
 		// Set the pixel shader.
-		m_ppsBasic->bindShader();
-
+		md3dDeviceContext->PSSetShader(
+			m_ppsBasic->pShader(),
+			nullptr,
+			NULL);
+		
 		// Set the pixel shader constants.
 		const DXVector3 eyePosW(m_pCamera->eyePosW());
 		m_pcbPerFrame->map();
@@ -275,11 +280,11 @@ void SemiReflectiveWindowApp::drawObjects()
 		m_pcbPerFrame->unmap();
 
 		ppBuffers[0] = m_pcbPerFrame->buffer();
-		m_ppsBasic->bindContantBuffers(
+		md3dDeviceContext->PSSetConstantBuffers(
 			m_pcbPerFrame->bindPoint(),
 			ppBuffers.size(),
 			ppBuffers.data());
-
+		
 		// Set the pixel shader resources.
 		std::array<ShaderResourceViewRawPtr, 5> ppResources = {
 			m_sbParallelLights->srv(),
@@ -287,14 +292,15 @@ void SemiReflectiveWindowApp::drawObjects()
 			nullptr,
 			m_pWallRV.p,
 			m_pSpecRV.p };
-		m_ppsBasic->bindResources(
+		md3dDeviceContext->PSSetShaderResources(
 			0,
 			ppResources.size(),
 			ppResources.data());
 
 		// Set the pixel shader sampler states.
 		std::array<SamplerStateRawPtr, 1> ppSamplers = { m_pSampler.p };
-		m_ppsBasic->bindSamplers(
+		/*m_ppsBasic->bindSamplers(*/
+		md3dDeviceContext->PSSetSamplers(
 			0,
 			ppSamplers.size(),
 			ppSamplers.data());
@@ -303,7 +309,7 @@ void SemiReflectiveWindowApp::drawObjects()
 		m_pRoom->drawWall();
 
 		// Set the wall's texture only and re-bind the pixel shader resources.
-		m_ppsBasic->bindResources(
+		md3dDeviceContext->PSSetShaderResources(
 			3,
 			1,
 			&m_pFloorRV.p);
@@ -324,16 +330,14 @@ void SemiReflectiveWindowApp::drawObjects()
 		m_pcbPerObject->setMatrix("gWVP", wvp);
 		m_pcbPerObject->setMatrix("gTexMtx", tex);
 		m_pcbPerObject->unmap();
-		//const std::array<BufferRawPtr, 1> ppBuffers = { m_pcbPerObject->buffer() };
-		//std::array<BufferRawPtr, 1> ppBuffers = { m_pcbPerObject->buffer() };
 		ppBuffers[0] = m_pcbPerObject->buffer();
-		m_pvsBasic->bindContantBuffers(
+		md3dDeviceContext->VSSetConstantBuffers(
 			m_pcbPerObject->bindPoint(),
 			ppBuffers.size(),
 			ppBuffers.data());
 
 		// Set the box's texture only and re-bind the pixel shader resources.
-		m_ppsBasic->bindResources(
+		md3dDeviceContext->PSSetShaderResources(
 			3,
 			1,
 			&m_pCrateRV.p);
@@ -354,7 +358,7 @@ void SemiReflectiveWindowApp::drawObjects()
 		md3dDeviceContext->OMSetDepthStencilState(m_pdssMirror.p, 1);
 
 		// Set the transparent blend state.
-		/*const*/ FLOAT blendFactors[4] = { 0.25f, 0.25f, 0.25f, 1.0f };
+		FLOAT blendFactors[4] = { 0.25f, 0.25f, 0.25f, 1.0f };
 		const UINT sampleMask(0xffffffff);
 		md3dDeviceContext->OMSetBlendState(m_pbsMirror.p, blendFactors, sampleMask);
 
@@ -367,15 +371,14 @@ void SemiReflectiveWindowApp::drawObjects()
 		m_pcbPerObject->setMatrix("gWVP", wvp);
 		m_pcbPerObject->setMatrix("gTexMtx", tex);
 		m_pcbPerObject->unmap();
-		//const std::array<BufferRawPtr, 1> ppBuffers = { m_pcbPerObject->buffer() };
 		ppBuffers[0] = m_pcbPerObject->buffer();
-		m_pvsBasic->bindContantBuffers(
+		md3dDeviceContext->VSSetConstantBuffers(
 			m_pcbPerObject->bindPoint(),
 			ppBuffers.size(),
 			ppBuffers.data());
 
 		// Set the mirror's texture only and re-bind the pixel shader resources.
-		m_ppsBasic->bindResources(
+		md3dDeviceContext->PSSetShaderResources(
 			3,
 			1,
 			&m_pMirrorRV.p);
@@ -396,7 +399,6 @@ void SemiReflectiveWindowApp::drawObjects()
 		const DXPlane reflectPlane(0.0f, 0.0f, 1.0f, 0.0f);	// xy plane
 		const DXMatrix reflector(DXMatrix::CreateReflection(reflectPlane));
 		world = crateWorld * reflector;	// first set the crate in its start position and then reflect
-		//world = DXMatrix::CreateTranslation(DXVector3(2, 1, 2)) * DXMatrix::CreateScale(2.0f);
 		wvp = world * viewProj;
 
 		m_pcbPerObject->map();
@@ -405,15 +407,14 @@ void SemiReflectiveWindowApp::drawObjects()
 		m_pcbPerObject->setMatrix("gWVP", wvp);
 		m_pcbPerObject->setMatrix("gTexMtx", tex);
 		m_pcbPerObject->unmap();
-		//const std::array<BufferRawPtr, 1> ppBuffers = { m_pcbPerObject->buffer() };
 		ppBuffers[0] = m_pcbPerObject->buffer();
-		m_pvsBasic->bindContantBuffers(
+		md3dDeviceContext->VSSetConstantBuffers(
 			m_pcbPerObject->bindPoint(),
 			ppBuffers.size(),
 			ppBuffers.data());
 
 		// Set the box's texture only and re-bind the pixel shader resources.
-		m_ppsBasic->bindResources(
+		md3dDeviceContext->PSSetShaderResources(
 			3,
 			1,
 			&m_pCrateRV.p);
@@ -425,7 +426,7 @@ void SemiReflectiveWindowApp::drawObjects()
 		// Update the parallel light's sb and bind to the pipeline.
 		m_sbParallelLights->setBuffer(m_parallelLights);
 		ppResources[0] = m_sbParallelLights->srv();
-		m_ppsBasic->bindResources(0, 1, &ppResources[0]);
+		md3dDeviceContext->PSSetShaderResources(0, 1, &ppResources[0]);
 
 		// set the mirror reflection's blend state
 		blendFactors[0] = blendFactors[1] = blendFactors[2] = 0.25f;
@@ -560,7 +561,8 @@ void SemiReflectiveWindowApp::drawModel(const BasicModelPtr &pModel, const DXMod
 		m_pcbPerObject->setMatrix("gTexMtx", DXMatrix::Identity());
 		m_pcbPerObject->unmap();
 		
-		m_pvsBasic->bindContantBuffers(
+		//m_pvsBasic->bindContantBuffers(
+		md3dDeviceContext->VSSetConstantBuffers(
 			m_pcbPerObject->bindPoint(),
 			1,
 			&m_pcbPerObject->pBuffer.p);
@@ -572,7 +574,8 @@ void SemiReflectiveWindowApp::drawModel(const BasicModelPtr &pModel, const DXMod
 			pModel->getSpecularTexture(uiMeshIndex).p ?
 			pModel->getSpecularTexture(uiMeshIndex).p :
 			m_pSpecRV.p };
-		m_ppsBasic->bindResources(
+		//m_ppsBasic->bindResources(
+		md3dDeviceContext->PSSetShaderResources(
 			3,
 			ppResources.size(),
 			ppResources.data());
