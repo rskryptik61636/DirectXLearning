@@ -26,27 +26,6 @@ public:
 		return m_pShaderByteCode;
 	}
 
-	// Binds the shader to the pipeline. All derived classes must implement this method.
-	virtual void bindShader() = 0;
-
-	// Binds constant buffers to the pipeline. All derived classes must implement this method.
-	virtual void bindContantBuffers(
-		UINT bindSlot,
-		UINT nBuffers,
-		BufferRawPtr const *ppBuffers) = 0;
-
-	// Binds shader resources to the pipelines. All derived classes must implement this method.
-	virtual void bindResources(
-		UINT bindSlot,
-		UINT nResources,
-		ShaderResourceViewRawPtr const *ppResources) = 0;
-
-	// Binds samplers to the pipelines. All derived classes must implement this method.
-	virtual void bindSamplers(
-		UINT bindSlot,
-		UINT nSamplers,
-		SamplerStateRawPtr const *ppSamplers) = 0;
-
 protected:
 
 	// Utility class to read the shader's compiled bytecode into the given buffer
@@ -96,16 +75,6 @@ protected:
 	template<typename T>
 	void setStructuredBuffer(const std::vector<T> &elements, const UINT nElements, ShaderStructuredBuffer<T> &structuredBuffer);
 	
-	// TODO: Remove when done testing.
-#if 0
-	// Utility function to copy a matrix into a mapped subresource.
-	void copyMatrixToMappedSubresource(const ShaderConstantBuffer &buf, const std::string &varName, const DXMatrix &matrix, D3D11_MAPPED_SUBRESOURCE &dst);
-
-	// Utility function to copy a shader constant into its mapped memory.
-	template<typename T>
-	void copyDataToMappedSubresource(const ShaderConstantBuffer &buf, const std::string &varName, const T* pSrc, D3D11_MAPPED_SUBRESOURCE &dst);
-#endif // 0
-	
 protected:
 
 	// D3D device
@@ -120,19 +89,6 @@ protected:
 	// Shader file path.
 	wpath m_shaderPath;
 };
-
-// TODO: Remove when done testing.
-#if 0
-// Utility function to copy a shader constant into its mapped memory.
-template<typename T>
-void DXShaderBase::copyDataToMappedSubresource(const ShaderConstantBuffer &buf, const std::string &varName, const T* pSrc, D3D11_MAPPED_SUBRESOURCE &dst)
-{
-	CopyMemory(
-		reinterpret_cast<BYTE*>(dst.pData) + buf.varByteOffset(varName),
-		reinterpret_cast<const BYTE*>(pSrc),
-		buf.varSizeInBytes(varName));
-}
-#endif // 0
 
 
 // Utility function to set a specified constant buffer member array's data buffer with the given data
@@ -249,26 +205,11 @@ public:
 	// Accessor function to access the input layout
 	const InputLayoutPtr& inputLayout()	const	{ return m_pInputLayout; }
 
-	// Binds the shader to the pipeline.
-	void bindShader();
-
-	// Binds constant buffers to the pipeline.
-	void bindContantBuffers(
-		UINT bindSlot,
-		UINT nBuffers,
-		BufferRawPtr const *ppBuffers);
-
-	// Binds shader resources to the pipelines.
-	void bindResources(
-		UINT bindSlot,
-		UINT nResources,
-		ShaderResourceViewRawPtr const *ppResources);
-
-	// Binds samplers to the pipelines.
-	void bindSamplers(
-		UINT bindSlot,
-		UINT nSamplers,
-		SamplerStateRawPtr const *ppSamplers);
+	// Accessor function for the raw pixel shader.
+	VertexShaderRawPtr pShader() const
+	{
+		return m_pShader.p;
+	}
 
 protected:
 
@@ -301,26 +242,12 @@ public:
 	// Dtor.
 	virtual ~DXPixelShader();
 
-	// Binds the shader to the pipeline.
-	void bindShader();
+	// Accessor function for the raw pixel shader.
+	PixelShaderRawPtr pShader() const
+	{
+		return m_pShader.p;
+	}
 
-	// Binds constant buffers to the pipeline.
-	void bindContantBuffers(
-		UINT bindSlot,
-		UINT nBuffers,
-		BufferRawPtr const *ppBuffers);
-
-	// Binds shader resources to the pipelines.
-	void bindResources(
-		UINT bindSlot,
-		UINT nResources,
-		ShaderResourceViewRawPtr const *ppResources);
-
-	// Binds samplers to the pipelines.
-	void bindSamplers(
-		UINT bindSlot,
-		UINT nSamplers,
-		SamplerStateRawPtr const *ppSamplers);
 
 protected:
 
@@ -339,55 +266,5 @@ typedef std::unique_ptr<DXPixelShader> DXPixelShaderPtr;
 /**********************************************************************
 * End of shader base classes
 **********************************************************************/
-
-#if 0
-/**********************************************************************
-* Start of shader implementations
-**********************************************************************/
-
-// Basic shading vertex shader
-class BasicShadingVS : public DXVertexShader
-{
-public:
-
-	// Param ctor.
-	explicit BasicShadingVS(const wpath &shaderRoot, const DevicePtr &pDevice);
-
-	// Binds the shader as well as all its associated constant buffers, resources and samplers to the pipeline.
-	void bind(
-		const DXMatrix *pWorld,
-		const DXMatrix *pWorldInvTrans,
-		const DXMatrix *pWvp,
-		const DXMatrix *pTexMtx);
-
-private:
-
-	// cbPerObject constant buffer.
-	ShaderConstantBuffer m_cbPerObject;
-};
-
-// Basic shading pixel shader
-class BasicShadingPS : public DXPixelShader
-{
-public:
-
-	// Param ctor.
-	explicit BasicShadingPS(const DevicePtr &pDevice);
-
-	// Binds the shader as well as all its associated constant buffers, resources and samplers to the pipeline.
-	void bind(
-		const std::vector<SLight> *pParallelLights,
-		const std::vector<SLight> *pPointLights,
-		const std::vector<SLight> *pSpotLights,
-		const ShaderResourceViewPtr &pDiffuseMap,
-		const ShaderResourceViewPtr &pSpecularMap,
-		const SamplerStatePtr &pTexSampler);
-};
-
-/**********************************************************************
-* End of shader implementations
-**********************************************************************/
-#endif // 0
-
 
 #endif	// DX_SHADERS_H
