@@ -238,11 +238,17 @@ typedef ID3DX11EffectShaderResourceVariable* EffectShaderResourceVariablePtr;
 typedef ID3DX11EffectScalarVariable* EffectScalarVariablePtr;
 
 typedef CComPtr<ID3DBlob> BlobPtr;
+typedef ID3D11VertexShader* VertexShaderRawPtr;
 typedef CComPtr<ID3D11VertexShader> VertexShaderPtr;
+typedef ID3D11PixelShader* PixelShaderRawPtr;
 typedef CComPtr<ID3D11PixelShader> PixelShaderPtr;
+typedef ID3D11GeometryShader* GeometryShaderRawPtr;
 typedef CComPtr<ID3D11GeometryShader> GeometryShaderPtr;
+typedef ID3D11HullShader* HullShaderRawPtr;
 typedef CComPtr<ID3D11HullShader> HullShaderPtr;
+typedef ID3D11DomainShader* DomainShaderRawPtr;
 typedef CComPtr<ID3D11DomainShader> DomainShaderPtr;
+typedef ID3D11ComputeShader* ComputeShaderRawPtr;
 typedef CComPtr<ID3D11ComputeShader> ComputeShaderPtr;
 typedef CComPtr<ID3D11ShaderReflection> ShaderReflectionPtr;
 typedef CComPtr<ID3D11SamplerState> SamplerStatePtr;
